@@ -1,0 +1,6 @@
+.vscode/
+*.dSYM
+*.o
+*.so
+*.out
+build/
