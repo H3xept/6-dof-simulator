@@ -10,6 +10,9 @@ DroneConfig config_from_file_path(char* path) {
 Drone::Drone(char* config_file) : 
     state(STATE_SIZE),
     config(config_from_file_path(config_file)),
-    dynamics(config) {}
+    dynamics(config),
+    dynamics_solver() {}
 
-void Drone::update(double dt) {}
+void Drone::update(double dt) {
+    
+}

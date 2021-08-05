@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
+#include <boost/numeric/odeint.hpp>
 #include <EquationsOfMotion/FixedWingEOM.h>
 #include "Containers/DroneConfig.h"
 #include "Interfaces/DynamicObject.h"
@@ -12,11 +13,14 @@
 
 #define STATE_SIZE 12
 
+typedef boost::numeric::odeint::runge_kutta_dopri5<Eigen::VectorXd,double,Eigen::VectorXd,double,boost::numeric::odeint::vector_space_algebra> ODESolver;
+
 class Drone : public DynamicObject {
 private:
     DroneConfig config;
     Eigen::VectorXd state;
     FixedWingEOM dynamics;
+    ODESolver dynamics_solver;
 public:
 
     Drone(char* config_file);
