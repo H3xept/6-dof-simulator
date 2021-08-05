@@ -6,18 +6,28 @@
 #include <iostream>
 #include <fstream>
 #include <EquationsOfMotion/FixedWingEOM.h>
-#include "Interfaces/DynamicObject.h"
 #include "Containers/DroneConfig.h"
+#include "Interfaces/DynamicObject.h"
+#include "ClassExtensions/FixedWingEOM_Extension.h"
+
+#define STATE_SIZE 12
 
 class Drone : public DynamicObject {
 private:
     DroneConfig config;
+    Eigen::VectorXd state;
+    FixedWingEOM dynamics;
 public:
+
     Drone(char* config_file);
-    Drone(DroneConfig c);
     ~Drone() {};
+
     void update(double dt) override;
-    
+
+    Eigen::VectorXd& get_state() override {
+        return this->state;
+    }
+
     DroneConfig get_config() {
         return this->config;    
     }

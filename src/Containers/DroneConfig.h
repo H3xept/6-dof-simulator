@@ -9,6 +9,21 @@
 #include "../ClassExtensions/MatrixXd_Extension.h"
 #include "../ClassExtensions/APM_Extension.h"
 
+/**
+ * 
+ * Structure that represents all drone properties.
+ * The data must be stored in a file contaning the following data (\n separated):
+ * 
+ * - mass
+ * - thrust coefficient
+ * - d
+ * - c
+ * - S
+ * - b_aero
+ * - drone_aero_config (see @ClassExtensions/APM_Extension)
+ * - J (see @ClassExtensions/MatrixXd_Extension)
+ * 
+ */
 struct DroneConfig : public PrettyPrintable {
     double mass; // kg
     double b_prop; // thrust coefficient
@@ -24,6 +39,7 @@ struct DroneConfig : public PrettyPrintable {
         // Aero Data
         i >> dc.drone_aero_config;
         // Inertial Matrix
+        dc.J.resize(3,3);
         i >> dc.J;
         return i;
     }
