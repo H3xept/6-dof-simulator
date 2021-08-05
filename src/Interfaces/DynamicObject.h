@@ -18,6 +18,7 @@ typedef Attitude AttitudeDotDot;
 
 struct DynamicObject : public EnvironmentObject {
 public:
+    ~DynamicObject() {};
     LatLonAlt position;
     Vector3 velocity;
     Vector3 acceleration;

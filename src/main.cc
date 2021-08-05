@@ -2,7 +2,7 @@
 #include "Logging/ConsoleLogger.h"
 #include "FlatEarth.h"
 #include "Simulator.h"
-
+#include "Drone.h"
 
 int main(int argc, char const *argv[])
 {
@@ -19,5 +19,8 @@ int main(int argc, char const *argv[])
     s.start();
     s.pause();
     s.resume();
+
+    Drone d{"../drone_models/fixed_wing"};
+    printf("%s\n", d.get_config().str().c_str());
     return 0;
 }

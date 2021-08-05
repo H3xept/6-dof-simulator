@@ -22,5 +22,7 @@ include_directories(PUBLIC "/usr/local/Cellar/eigen/3.3.9/include/eigen3/")
 # MAVLink headers
 target_include_directories(6dof PUBLIC ${CMAKE_SOURCE_DIR}/mavlink/standard/)
 
+find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+
 add_subdirectory(dependencies)
-target_link_libraries(6dof PUBLIC caelus_fdm)
+target_link_libraries(6dof PUBLIC caelus_fdm Eigen3::Eigen)
