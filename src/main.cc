@@ -3,6 +3,7 @@
 #include "FlatEarth.h"
 #include "Simulator.h"
 #include "Drone.h"
+#include "Sockets/MAVLinkConnectionHandler.h"
 
 int main(int argc, char const *argv[])
 {
@@ -22,5 +23,10 @@ int main(int argc, char const *argv[])
 
     Drone d{"../drone_models/fixed_wing"};
     printf("%s\n", d.get_config().str().c_str());
+
+    boost::asio::io_service service;
+    MAVLinkConnectionHandler handler{service, ConnectionTarget::PX4};
+    service.run();
+    
     return 0;
 }
