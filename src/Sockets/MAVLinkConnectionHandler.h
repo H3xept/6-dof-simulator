@@ -25,7 +25,7 @@ private:
 public:
     MAVLinkConnectionHandler(io_service& service, ConnectionTarget target);    
     ~MAVLinkConnectionHandler();
-    void set_message_handler(MAVLinkMessageHandler* h);
+    void set_message_handler(MAVLinkMessageHandler* h) override;
     void handle_mavlink_message(mavlink_message_t m);
     void receive_data(const char* buff, size_t len) override;
     bool received_message(mavlink_message_t m) override;

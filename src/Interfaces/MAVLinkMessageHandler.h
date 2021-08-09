@@ -6,7 +6,7 @@
 class MAVLinkMessageHandler {
 public:
     ~MAVLinkMessageHandler() {};
-    virtual void handle_heartbeat(mavlink_message_t m) = 0;
+    virtual void handle_mavlink_message(mavlink_message_t m) = 0;
 };
 
 #endif // __MAVLINKMESSAGEHANDLER_H__
