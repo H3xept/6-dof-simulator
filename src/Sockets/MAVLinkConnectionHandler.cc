@@ -26,4 +26,20 @@ bool MAVLinkConnectionHandler::received_message(mavlink_message_t m) {
     printf("Received mavlink message! (%d)\n", m.msgid);
 }
 
-bool MAVLinkConnectionHandler::send_message(mavlink_message_t& m) {}
+bool MAVLinkConnectionHandler::send_message(const mavlink_message_t& m) {
+#define MAX_MAVLINK_MESSAGE_SIZE 300
+
+    uint8_t buf[MAX_MAVLINK_MESSAGE_SIZE];
+    u_int16_t len = mavlink_msg_to_send_buffer(buf, &m);
+    int bytes_sent = this->tcp_acceptor.send_data(&buf, len);
+    if (bytes_sent > 0) fprintf(stdout, "Sent mavlink message (%d bytes)\n", bytes_sent);
+    else {
+        fprintf(stderr, "Error in sending MAVLink message.\n");
+        return false;
+    }
+    return true;
+}
+
+bool MAVLinkConnectionHandler::connection_open() {
+    return this->tcp_acceptor.connected();
+}

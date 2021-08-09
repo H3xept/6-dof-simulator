@@ -1,8 +1,9 @@
 #include "Sim6DOFInfo.h"
 #include "Logging/ConsoleLogger.h"
-#include "FlatEarth.h"
 #include "Simulator.h"
 #include "Drone.h"
+#include <boost/thread.hpp>
+
 #include "Sockets/MAVLinkConnectionHandler.h"
 
 int main(int argc, char const *argv[])
@@ -12,21 +13,17 @@ int main(int argc, char const *argv[])
     cl.log("Normal log");
     cl.err_log("Error log");
 
-    FlatEarth f{cl};
-    printf("%s\n", f.str().c_str());
-
-    Simulator s{{100, 1}};
-    printf("%s\n", s.str().c_str());
-    s.start();
-    s.pause();
-    s.resume();
-
-    Drone d{"../drone_models/fixed_wing"};
-    printf("%s\n", d.get_config().str().c_str());
-
     boost::asio::io_service service;
     MAVLinkConnectionHandler handler{service, ConnectionTarget::PX4};
-    service.run();
+    boost::thread link_thread = boost::thread(boost::bind(&boost::asio::io_service::run, &service));
+    Simulator s{{100, 1}};
+    Drone d{"../drone_models/fixed_wing", handler};
+    s.add_environment_object(d);
+    s.start();
+
+    // s.pause();
+    // s.resume();
+    // service.run();
     
     return 0;
 }

@@ -11,21 +11,21 @@ TCPAcceptor::~TCPAcceptor() {}
 
 void TCPAcceptor::start() 
 {
-    TCPConnection::tcp_connection_ptr conn = TCPConnection::create(this->service, *this);
-    conn->start_reading();
+    this->connection = TCPConnection::create(this->service, *this);
+    this->connection->start_reading();
     this->_acceptor.async_accept(
-        conn->get_socket(),
+        this->connection->get_socket(),
         boost::bind(
             &TCPAcceptor::handle_accept,
             this,
-            conn,
+            this->connection,
             boost::asio::placeholders::error
         )
     ); 
 }
 
 void TCPAcceptor::handle_accept(TCPConnection::tcp_connection_ptr conn, const boost::system::error_code& err) {
-    printf("Accepted \n");
+    printf("Accepted new connection.\n");
 }
 
 void TCPAcceptor::receive_data(const char* buff, size_t len) {
@@ -38,4 +38,15 @@ void TCPAcceptor::add_data_receiver(DataReceiver* r) {
     this->broadcast_recv.push_back(r);
 }
 
-void TCPAcceptor::send_data(const char* buff, size_t len) {}
+size_t TCPAcceptor::send_data(const void* buff, size_t len) {
+    boost::system::error_code error;
+    return boost::asio::write(
+        this->connection->get_socket(),
+        boost::asio::buffer(buff, len),
+        error
+    );
+}
+
+bool TCPAcceptor::connected() {
+    return this->connection->get_socket().is_open();
+}

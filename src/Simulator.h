@@ -1,8 +1,8 @@
 #ifndef __SIMULATOR_H__
 #define __SIMULATOR_H__
 
-#include "Interfaces/Simulation.h"
 #include "Interfaces/PrettyPrintable.h"
+#include "Interfaces/Environment.h"
 
 #define SIMULATION_STARTED "Simulation started."
 #define SIMULATION_PAUSED "Simulation paused."
@@ -13,11 +13,10 @@ struct SimulatorConfig {
     double max_speed_multiplier;
 };
 
-class Simulator : public Simulation, public PrettyPrintable {
+class Simulator : public Environment, public PrettyPrintable {
 private:
     SimulatorConfig config;
 public:    
-    std::unique_ptr<Environment> environment;
     std::unique_ptr<Logger> logger;
     
     Simulator(SimulatorConfig c);
@@ -27,6 +26,9 @@ public:
 
     std::string str() override;
     
+    void add_environment_object(EnvironmentObject& e) override;
+
+    void update(double dt) override;
     void start() override;
     void pause() override;
     void resume() override;

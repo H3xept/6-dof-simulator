@@ -2,8 +2,9 @@
 #define __ENVIRONMENTOBJECT_H__
 
 #include "TimeHandler.h"
+#include "PrettyPrintable.h"
 
-class EnvironmentObject : public TimeHandler{
+class EnvironmentObject : public TimeHandler, public PrettyPrintable {
 public: 
     virtual ~EnvironmentObject() {}
 };

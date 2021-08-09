@@ -25,7 +25,8 @@ public:
     ~MAVLinkConnectionHandler();
     void receive_data(const char* buff, size_t len) override;
     bool received_message(mavlink_message_t m) override;
-    bool send_message(mavlink_message_t& m) override;
+    bool send_message(const mavlink_message_t& m) override;
+    bool connection_open() override;
 };
 
 #endif // __MAVLINKCONNECTIONHANDLER_H__
