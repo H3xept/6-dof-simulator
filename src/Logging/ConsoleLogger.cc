@@ -1,7 +1,14 @@
 #include <string>
 #include "ConsoleLogger.h"
 
-ConsoleLogger::~ConsoleLogger() {}
+ConsoleLogger* ConsoleLogger::instance{nullptr};
+std::mutex ConsoleLogger::mutex;
+
+ConsoleLogger* ConsoleLogger::shared_instance() {
+    std::lock_guard<std::mutex> lock(mutex);
+    if (instance == nullptr) instance = new ConsoleLogger();
+    return instance;
+}
 
 void ConsoleLogger::log(std::string s)  {
     fprintf(stdout, "%s\n", s.c_str());

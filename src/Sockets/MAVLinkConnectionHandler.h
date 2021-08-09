@@ -1,9 +1,10 @@
 #ifndef __MAVLINKCONNECTIONHANDLER_H__
 #define __MAVLINKCONNECTIONHANDLER_H__
 
+#include <boost/asio.hpp>
+#include "../Interfaces/MAVLinkMessageHandler.h"
 #include "TCPAcceptor.h"
 #include "../Interfaces/MAVLinkMessageRelay.h"
-#include <boost/asio.hpp>
 
 #define MAX_MAVLINK_PACKET_LEN 512
 
@@ -19,10 +20,13 @@ private:
     uint buffer_read_head = 0;
     uint buffer_parse_head = 0;
     TCPAcceptor tcp_acceptor;
+    MAVLinkMessageHandler* message_handler = NULL;
     bool parse_mavlink_message(const char* buff, size_t len, mavlink_message_t& msg, mavlink_status_t& status);
 public:
     MAVLinkConnectionHandler(io_service& service, ConnectionTarget target);    
     ~MAVLinkConnectionHandler();
+    void set_message_handler(MAVLinkMessageHandler* h);
+    void handle_mavlink_message(mavlink_message_t m);
     void receive_data(const char* buff, size_t len) override;
     bool received_message(mavlink_message_t m) override;
     bool send_message(const mavlink_message_t& m) override;

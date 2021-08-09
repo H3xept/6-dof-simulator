@@ -16,6 +16,7 @@ struct SimulatorConfig {
 class Simulator : public Environment, public PrettyPrintable {
 private:
     SimulatorConfig config;
+    std::chrono::steady_clock::time_point last_sim_time = std::chrono::steady_clock::now();
 public:    
     std::unique_ptr<Logger> logger;
     

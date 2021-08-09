@@ -1,4 +1,5 @@
 #include "MAVLinkConnectionHandler.h"
+#include "../Logging/ConsoleLogger.h"
 
 MAVLinkConnectionHandler::MAVLinkConnectionHandler(io_service& service, ConnectionTarget target) : 
     tcp_acceptor(service, (int)target) {
@@ -22,8 +23,29 @@ void MAVLinkConnectionHandler::receive_data(const char* buff, size_t len) {
     }
 }
 
+void MAVLinkConnectionHandler::handle_mavlink_message(mavlink_message_t m) {
+    ConsoleLogger* logger = ConsoleLogger::shared_instance();
+    switch(m.msgid) {
+        case MAVLINK_MSG_ID_HEARTBEAT:
+            logger->log("MSG: HEARTBEAT");
+            break;
+        case MAVLINK_MSG_ID_HIL_ACTUATOR_CONTROLS:
+            logger->log("MSG: HIL_ACTUATOR_CONTROLS");
+            break;
+        case MAVLINK_MSG_ID_HIL_CONTROLS:
+            logger->log("MSG: HIL_CONTROLS");
+            break;
+        case MAVLINK_MSG_ID_COMMAND_LONG:
+            logger->log("MSG: COMMAND_LONG");
+            break;
+        default:
+            logger->log("Unknown message!");
+    }
+}
+
 bool MAVLinkConnectionHandler::received_message(mavlink_message_t m) {
     printf("Received mavlink message! (%d)\n", m.msgid);
+    this->handle_mavlink_message(m);
 }
 
 bool MAVLinkConnectionHandler::send_message(const mavlink_message_t& m) {

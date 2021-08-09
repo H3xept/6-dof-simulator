@@ -3,7 +3,6 @@
 
 #include <mavlink.h>
 #include <boost/asio.hpp>
-#include <ctime>
 #include "TimeHandler.h"
 #include "MAVLinkMessageRelay.h"
 #include "Alive.h"

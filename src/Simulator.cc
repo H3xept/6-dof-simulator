@@ -1,11 +1,11 @@
+#include <boost/format.hpp>
 #include "Simulator.h"
 #include "Logging/ConsoleLogger.h"
 
 Simulator::Simulator(SimulatorConfig c) : 
     config(c),
-    logger(new ConsoleLogger())
-{
-} 
+    logger(ConsoleLogger::shared_instance())
+{} 
 
 Simulator::~Simulator() {}
 
@@ -14,7 +14,6 @@ SimulatorConfig Simulator::get_config() {
 }
 
 void Simulator::add_environment_object(EnvironmentObject& e) {
-    this->logger->log("Adding env object %s\n to %s\n" + e.str() +  " " + this->str());
     this->env_objects.push_back(&e);
 }
 
@@ -27,7 +26,9 @@ void Simulator::update(double dt) {
 void Simulator::start() {
     this->logger->log(SIMULATION_STARTED);
     while(true) {
-        this->update(100);
+        std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+        double elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(now - this->last_sim_time).count();
+        this->update(elapsed_time);
     }
 }
 
