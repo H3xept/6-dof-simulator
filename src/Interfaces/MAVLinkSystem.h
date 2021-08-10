@@ -2,6 +2,7 @@
 #define __MAVLINKSYSTEM_H__
 
 #include <mavlink.h>
+#include <chrono>
 #include <boost/asio.hpp>
 #include "TimeHandler.h"
 #include "MAVLinkMessageRelay.h"
@@ -29,7 +30,7 @@ public:
 
     void update(double dt) override {
         auto now = std::chrono::steady_clock::now();
-        double elapsed_time = std::chrono::duration_cast<chrono::milliseconds>(now - this->last_heartbeat).count();
+        double elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(now - this->last_heartbeat).count();
         if (elapsed_time >= this->heartbeat_interval) {
             this->send_heartbeat();
             this->last_heartbeat = now;
