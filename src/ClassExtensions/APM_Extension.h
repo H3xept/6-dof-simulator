@@ -38,17 +38,17 @@
  * - m_Cn_delta_a
  * - m_Cn_p
  * - m_Cn_r
- * 
+ * If a term is missing default value should be 0
  */
 struct APM : public caelus_fdm::APM {
     friend std::istream &operator>>(std::istream &i, caelus_fdm::APM& aero_data) {
         i >> 
-            aero_data.m_CL_0 >>
-            aero_data.m_CL_alpha >>
+            aero_data.m_CL_0 >> // !
+            aero_data.m_CL_alpha >> // !
             aero_data.m_CL_delta_e >>
             aero_data.m_CL_q >>
-            aero_data.m_CD_0 >>
-            aero_data.m_CD_alpha >>
+            aero_data.m_CD_0 >> // !
+            aero_data.m_CD_alpha >> // !
             aero_data.m_CD_alpha2 >>
             aero_data.m_CD_delta_e2 >>
             aero_data.m_CD_beta2 >>

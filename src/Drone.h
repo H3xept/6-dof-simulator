@@ -37,6 +37,11 @@ private:
     void _process_mavlink_messages();
     void _process_command_long_message(mavlink_message_t m);
     void _process_hil_actuator_controls(mavlink_message_t m);
+
+    void _publish_hil_gps();
+    void _publish_hil_state_quaternion();
+    void _publish_state();
+
 public:
 
     Drone(char* config_file, MAVLinkMessageRelay& connection);
@@ -45,7 +50,7 @@ public:
     Eigen::VectorXd& get_state() override { return this->state; }
     DroneConfig get_config() { return this->config; }
     bool is_armed() { return this->armed; }
-    
+
     void update(double dt) override;
     MAVLinkMessageRelay& get_mavlink_message_relay() override;
     // Receives mavlink message from non-main thread

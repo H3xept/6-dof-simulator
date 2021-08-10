@@ -22,10 +22,55 @@ Drone::Drone(char* config_file, MAVLinkMessageRelay& connection) :
 void Drone::update(double dt) {
     MAVLinkSystem::update(dt);
     this->_process_mavlink_messages();
+    this->_publish_state();
 }
 
 MAVLinkMessageRelay& Drone::get_mavlink_message_relay() {
     return this->connection;
+}
+
+void Drone::_publish_hil_gps() {
+    ConsoleLogger* logger = ConsoleLogger::shared_instance();
+    logger->debug_log("Publishing HIL_GPS message");
+}
+
+void Drone::_publish_hil_state_quaternion() {
+    
+    ConsoleLogger* logger = ConsoleLogger::shared_instance();
+    mavlink_hil_state_quaternion_t hil_quat;
+    mavlink_message_t msg;
+    
+    
+
+    mavlink_msg_hil_state_quaternion_pack(
+        this->system_id, 
+        this->component_id,
+        &msg,
+        time, 
+        attitude_quaternion,
+        roll_speed,
+        pitch_speed,
+        yaw_speed,
+        latitude,
+        longitude,
+        altitude,
+        x_ground_speed,
+        y_ground_speed,
+        z_ground_speed,
+        0,
+        0,
+        x_acceleration,
+        y_acceleration,
+        z_acceleration
+    );
+
+    logger->debug_log("Publishing HIL_STATE_QUATERNION message");
+    this->connection.send_message(msg);
+}
+
+void Drone::_publish_state() {
+    this->_publish_hil_gps();
+    this->_publish_hil_state_quaternion();
 }
 
 
