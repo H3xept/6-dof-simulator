@@ -1,6 +1,7 @@
 #ifndef __SIMULATOR_H__
 #define __SIMULATOR_H__
 
+#include <chrono>
 #include <memory>
 #include "Interfaces/PrettyPrintable.h"
 #include "Interfaces/Environment.h"
