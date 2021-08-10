@@ -40,7 +40,7 @@ public:
         MAVLinkMessageRelay& relay = this->get_mavlink_message_relay();
         if (!relay.connection_open()) { return; }
         mavlink_message_t hb;
-        mavlink_msg_heartbeat_pack(this->system_id, this->component_id, &hb, MAV_TYPE_HELICOPTER, MAV_AUTOPILOT_PX4, MAV_MODE_GUIDED_ARMED, 0, MAV_STATE_ACTIVE);
+        mavlink_msg_heartbeat_pack(this->system_id, this->component_id, &hb, MAV_TYPE_VTOL_QUADROTOR, MAV_AUTOPILOT_PX4, MAV_MODE_GUIDED_ARMED, 0, MAV_STATE_ACTIVE);
         relay.send_message(hb);
     }
 

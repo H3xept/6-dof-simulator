@@ -1,6 +1,7 @@
 #ifndef __DRONE_H__
 #define __DRONE_H__
 
+#include <mavlink.h>
 #include <Eigen/Eigen>
 #include <stdio.h>
 #include <iostream>
@@ -28,8 +29,14 @@ private:
     ODESolver dynamics_solver;
     MAVLinkMessageRelay& connection;
     boost::lockfree::queue<mavlink_message_t, boost::lockfree::capacity<50>> message_queue;
+    
+    uint16_t hil_state_quaternion_message_frequency = 100; // Default frequency of 100us
+    bool armed = false;
+
     void _process_mavlink_message(mavlink_message_t m);
     void _process_mavlink_messages();
+    void _process_command_long_message(mavlink_message_t m);
+    void _process_hil_actuator_controls(mavlink_message_t m);
 public:
 
     Drone(char* config_file, MAVLinkMessageRelay& connection);
@@ -37,7 +44,8 @@ public:
 
     Eigen::VectorXd& get_state() override { return this->state; }
     DroneConfig get_config() { return this->config; }
-
+    bool is_armed() { return this->armed; }
+    
     void update(double dt) override;
     MAVLinkMessageRelay& get_mavlink_message_relay() override;
     // Receives mavlink message from non-main thread
