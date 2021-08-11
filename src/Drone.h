@@ -18,6 +18,8 @@
 #include "Interfaces/MAVLinkMessageRelay.h"
 #include "Interfaces/MAVLinkMessageHandler.h"
 #include "Interfaces/DroneStateEncoder.h"
+#include "Propellers.h"
+#include "Ailerons.h"
 
 #define STATE_SIZE 12
 
@@ -28,17 +30,27 @@ class Drone : public DynamicObject,
               public MAVLinkMessageHandler,
               public DroneStateEncoder {
 private:
+    
+    double drone_time = .0;
+    bool armed = false;
+
+    Propellers propellers;
+    Ailerons ailerons;
+
     DroneConfig config;
+
     Eigen::VectorXd state;
     Eigen::VectorXd dx_state;
     FixedWingEOM dynamics;
     ODESolver dynamics_solver;
+
     MAVLinkMessageRelay& connection;
     boost::lockfree::queue<mavlink_message_t, boost::lockfree::capacity<50>> message_queue;
     
     std::chrono::steady_clock::time_point last_autopilot_telemetry = std::chrono::steady_clock::now();
     uint16_t hil_state_quaternion_message_frequency = 1000; // Default frequency of 1s
-    bool armed = false;
+
+    void _setup_drone();
 
     void _process_mavlink_message(mavlink_message_t m);
     void _process_mavlink_messages();
@@ -49,6 +61,7 @@ private:
     void _publish_hil_state_quaternion();
     void _publish_state();
 
+    void _step_dynamics(double dt);
 public:
 
     Drone(char* config_file, MAVLinkMessageRelay& connection);
@@ -67,7 +80,6 @@ public:
     uint64_t get_sim_time() override;
     Eigen::VectorXd& get_vector_state() override;
     Eigen::VectorXd& get_vector_dx_state() override;
-    void get_lat_lon_alt(float* lat_lon_alt) override;
 };
 
 #endif // __DRONE_H__

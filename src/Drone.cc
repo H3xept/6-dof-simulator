@@ -18,12 +18,37 @@ Drone::Drone(char* config_file, MAVLinkMessageRelay& connection) :
     connection(connection)
     {
         this->connection.set_message_handler(this);
+        this->_setup_drone();
     }
+
+void Drone::_setup_drone() {
+    // Inject controllers into dynamics model
+    this->dynamics.setController([this] (double dt) -> Eigen::VectorXd
+        { return this->propellers.control(dt); });
+    this->dynamics.setControllerAero([this] (double dt) -> Eigen::VectorXd
+        { return this->ailerons.control(dt); });
+}
 
 void Drone::update(double dt) {
     MAVLinkSystem::update(dt);
     this->_process_mavlink_messages();
     this->_publish_state();
+    this->_step_dynamics(dt);
+}
+
+void Drone::_step_dynamics(double dt) {
+    this->dynamics_solver.do_step(
+        [this] (const Eigen::VectorXd & x, Eigen::VectorXd &dx, const double t) -> void
+                {
+                    this->dynamics.evaluate(t,x,dx);
+                    this->dx_state = dx;
+                }
+        ,
+        this->state,
+        this->drone_time,
+        dt
+    );
+    this->drone_time += dt;
 }
 
 MAVLinkMessageRelay& Drone::get_mavlink_message_relay() {
@@ -136,8 +161,4 @@ Eigen::VectorXd& Drone::get_vector_state() {
 
 Eigen::VectorXd& Drone::get_vector_dx_state() {
     return this->dx_state;
-}
-
-void Drone::get_lat_lon_alt(float* lat_lon_alt) {
-    return;
 }

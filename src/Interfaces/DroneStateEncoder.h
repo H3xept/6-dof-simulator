@@ -50,8 +50,14 @@ protected:
         const int16_t* acceleration = (const int16_t*) state_derivative.data();
         for (uint i = 0; i < 3; i++) *(x_y_z+i) = *(acceleration+i);
     } 
+
+    void get_lat_lon_alt(float* lat_lon_alt) {  // <float(3)>
+        Eigen::VectorXd state_derivative = this->get_vector_dx_state();
+        const float* _lat_lon_alt = (const float*) state_derivative.data();
+        for (uint i = 0; i < 3; i++) *(lat_lon_alt+i) = *(_lat_lon_alt+i);
+    }
+
 public:
-    virtual void get_lat_lon_alt(float* lat_lon_alt) = 0; // <float(3)>
     virtual uint64_t get_sim_time() = 0;
 
     /**

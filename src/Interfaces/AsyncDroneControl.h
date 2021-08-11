@@ -2,12 +2,12 @@
 #define __ASYNCDRONECONTROL_H__
 
 #include <Eigen/Eigen>
-#include "DroneControl.h"
 
-class AsyncDroneControl : public DroneControl {
+class AsyncDroneControl {
 public:
-    virtual Eigen::VectorXd last_control() = 0;
+    ~AsyncDroneControl() {};
+    virtual Eigen::VectorXd control(double dt) = 0;
     virtual void set_control(Eigen::VectorXd c) = 0;
-}
+};
 
 #endif // __ASYNCDRONECONTROL_H__
