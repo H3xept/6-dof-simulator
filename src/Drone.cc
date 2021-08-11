@@ -11,6 +11,7 @@ DroneConfig config_from_file_path(char* path) {
 Drone::Drone(char* config_file, MAVLinkMessageRelay& connection) : 
     MAVLinkSystem::MAVLinkSystem(1, 200),
     state(STATE_SIZE),
+    dx_state(STATE_SIZE),
     config(config_from_file_path(config_file)),
     dynamics(config),
     dynamics_solver(),
@@ -37,42 +38,26 @@ void Drone::_publish_hil_gps() {
 void Drone::_publish_hil_state_quaternion() {
     
     ConsoleLogger* logger = ConsoleLogger::shared_instance();
-    mavlink_hil_state_quaternion_t hil_quat;
-    mavlink_message_t msg;
-    
-    
-
-    mavlink_msg_hil_state_quaternion_pack(
-        this->system_id, 
-        this->component_id,
-        &msg,
-        time, 
-        attitude_quaternion,
-        roll_speed,
-        pitch_speed,
-        yaw_speed,
-        latitude,
-        longitude,
-        altitude,
-        x_ground_speed,
-        y_ground_speed,
-        z_ground_speed,
-        0,
-        0,
-        x_acceleration,
-        y_acceleration,
-        z_acceleration
-    );
-
+    mavlink_message_t msg = this->hil_state_quaternion_msg(this->system_id, this->component_id);
     logger->debug_log("Publishing HIL_STATE_QUATERNION message");
     this->connection.send_message(msg);
 }
 
 void Drone::_publish_state() {
+    if (!this->connection.connection_open()) return;
+
+    auto now = std::chrono::steady_clock::now();
+    bool should_send_autopilot_telemetry = 
+        std::chrono::duration_cast<std::chrono::milliseconds>
+        (now - this->last_autopilot_telemetry).count()
+        > this->hil_state_quaternion_message_frequency;
+
+    if (!should_send_autopilot_telemetry) return;
+
+    this->last_autopilot_telemetry = now;
     this->_publish_hil_gps();
     this->_publish_hil_state_quaternion();
 }
-
 
 /**
  * Process a MAVLink command.
@@ -87,9 +72,8 @@ void Drone::_process_command_long_message(mavlink_message_t m) {
     
     switch(command_id) {
         case MAV_CMD_SET_MESSAGE_INTERVAL:
-            if (command.param1 == MAV_CMD_SET_MESSAGE_INTERVAL) {
-                this->hil_state_quaternion_message_frequency = command.param2;
-            } 
+            printf("Simulator -> PX4 message interval now set to %f (us?)\n", command.param2);
+            this->hil_state_quaternion_message_frequency = command.param1;
             break;
         default:
             fprintf(stdout, "Unknown command id from command long (%d)", command_id);
@@ -138,4 +122,22 @@ void Drone::_process_mavlink_messages() {
 
 void Drone::handle_mavlink_message(mavlink_message_t m) {
     this->message_queue.push(m);
+}
+
+#pragma mark DroneStateEncoder
+
+uint64_t Drone::get_sim_time() {
+    return 0;
+}
+
+Eigen::VectorXd& Drone::get_vector_state() {
+    return this->state;
+}
+
+Eigen::VectorXd& Drone::get_vector_dx_state() {
+    return this->dx_state;
+}
+
+void Drone::get_lat_lon_alt(float* lat_lon_alt) {
+    return;
 }

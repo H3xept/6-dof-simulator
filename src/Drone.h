@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
+#include <chrono>
 #include <boost/numeric/odeint.hpp>
 #include <boost/lockfree/queue.hpp>
 #include <EquationsOfMotion/FixedWingEOM.h>
@@ -16,21 +17,27 @@
 #include "ClassExtensions/FixedWingEOM_Extension.h"
 #include "Interfaces/MAVLinkMessageRelay.h"
 #include "Interfaces/MAVLinkMessageHandler.h"
+#include "Interfaces/DroneStateEncoder.h"
 
 #define STATE_SIZE 12
 
 typedef boost::numeric::odeint::runge_kutta_dopri5<Eigen::VectorXd,double,Eigen::VectorXd,double,boost::numeric::odeint::vector_space_algebra> ODESolver;
 
-class Drone : public DynamicObject, public MAVLinkSystem, public MAVLinkMessageHandler {
+class Drone : public DynamicObject,
+              public MAVLinkSystem,
+              public MAVLinkMessageHandler,
+              public DroneStateEncoder {
 private:
     DroneConfig config;
     Eigen::VectorXd state;
+    Eigen::VectorXd dx_state;
     FixedWingEOM dynamics;
     ODESolver dynamics_solver;
     MAVLinkMessageRelay& connection;
     boost::lockfree::queue<mavlink_message_t, boost::lockfree::capacity<50>> message_queue;
     
-    uint16_t hil_state_quaternion_message_frequency = 100; // Default frequency of 100us
+    std::chrono::steady_clock::time_point last_autopilot_telemetry = std::chrono::steady_clock::now();
+    uint16_t hil_state_quaternion_message_frequency = 1000; // Default frequency of 1s
     bool armed = false;
 
     void _process_mavlink_message(mavlink_message_t m);
@@ -56,6 +63,11 @@ public:
     // Receives mavlink message from non-main thread
     // Should store messages in queue and process them within the update loop.
     void handle_mavlink_message(mavlink_message_t m) override;
+
+    uint64_t get_sim_time() override;
+    Eigen::VectorXd& get_vector_state() override;
+    Eigen::VectorXd& get_vector_dx_state() override;
+    void get_lat_lon_alt(float* lat_lon_alt) override;
 };
 
 #endif // __DRONE_H__
