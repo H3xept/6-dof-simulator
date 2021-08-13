@@ -13,7 +13,7 @@ using namespace boost::asio;
 class MAVLinkSystem : public Alive, public TimeHandler {
 private:
     // Milliseconds
-    double heartbeat_interval = 1000;
+    double heartbeat_interval = 500;
     std::chrono::steady_clock::time_point last_heartbeat = std::chrono::steady_clock::now();
 public:
     uint8_t system_id;
@@ -28,7 +28,7 @@ public:
     virtual double get_heartbeat_interval() { return this->heartbeat_interval; }
     virtual void set_heartbeat_interval(double interval) { this->heartbeat_interval = interval; }
 
-    void update(double dt) override {
+    void update(boost::chrono::milliseconds ms) override {
         auto now = std::chrono::steady_clock::now();
         double elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(now - this->last_heartbeat).count();
         if (elapsed_time >= this->heartbeat_interval) {

@@ -4,6 +4,7 @@
 MAVLinkConnectionHandler::MAVLinkConnectionHandler(io_service& service, ConnectionTarget target) : 
     tcp_acceptor(service, (int)target) {
         this->tcp_acceptor.add_data_receiver(this);
+        this->new_message_signal.connect(boost::bind(&MAVLinkConnectionHandler::send_message, this, _1));
 }
 
 MAVLinkConnectionHandler::~MAVLinkConnectionHandler() {}
@@ -23,10 +24,20 @@ void MAVLinkConnectionHandler::receive_data(const char* buff, size_t len) {
     }
 }
 
+size_t MAVLinkConnectionHandler::send_data(const void* buff, size_t len) {
+    if (this->tcp_acceptor.connected()) {
+        return this->tcp_acceptor.send_data(buff, len);
+    } return 0;
+}
+
 bool MAVLinkConnectionHandler::received_message(mavlink_message_t m) {
     printf("Received mavlink message! (%d)\n", m.msgid);
-    if (this->message_handler != NULL) 
-        this->message_handler->handle_mavlink_message(m);
+    for (auto h : this->message_handlers) 
+        h->handle_mavlink_message(m);
+}
+
+void MAVLinkConnectionHandler::enqueue_message(const mavlink_message_t m) {
+    this->new_message_signal(m);
 }
 
 bool MAVLinkConnectionHandler::send_message(const mavlink_message_t& m) {
@@ -47,6 +58,6 @@ bool MAVLinkConnectionHandler::connection_open() {
     return this->tcp_acceptor.connected();
 }
 
-void MAVLinkConnectionHandler::set_message_handler(MAVLinkMessageHandler* h) {
-    this->message_handler = h;
+void MAVLinkConnectionHandler::add_message_handler(MAVLinkMessageHandler* h) {
+    this->message_handlers.push_back(h);
 }

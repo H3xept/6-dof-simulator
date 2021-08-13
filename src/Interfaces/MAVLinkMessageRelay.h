@@ -8,7 +8,8 @@ class MAVLinkMessageRelay {
 public:
     virtual bool received_message(mavlink_message_t m) = 0;
     virtual bool send_message(const mavlink_message_t& m) = 0;
-    virtual void set_message_handler(MAVLinkMessageHandler* h) = 0;
+    virtual void enqueue_message(const mavlink_message_t m) = 0;
+    virtual void add_message_handler(MAVLinkMessageHandler* h) = 0;
     virtual bool connection_open() = 0;
 };
 

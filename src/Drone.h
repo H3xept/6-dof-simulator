@@ -31,7 +31,10 @@ class Drone : public DynamicObject,
               public DroneStateEncoder {
 private:
     
-    double drone_time = .0;
+    std::chrono::milliseconds time{0};
+    std::chrono::milliseconds last_autopilot_telemetry{0};
+    uint16_t hil_state_quaternion_message_frequency = 1000; // Default frequency of 1s
+
     bool armed = false;
 
     Propellers propellers;
@@ -46,9 +49,6 @@ private:
 
     MAVLinkMessageRelay& connection;
     boost::lockfree::queue<mavlink_message_t, boost::lockfree::capacity<50>> message_queue;
-    
-    std::chrono::steady_clock::time_point last_autopilot_telemetry = std::chrono::steady_clock::now();
-    uint16_t hil_state_quaternion_message_frequency = 1000; // Default frequency of 1s
 
     void _setup_drone();
 
@@ -61,7 +61,7 @@ private:
     void _publish_hil_state_quaternion();
     void _publish_state();
 
-    void _step_dynamics(double dt);
+    void _step_dynamics(boost::chrono::milliseconds ms);
 public:
 
     Drone(char* config_file, MAVLinkMessageRelay& connection);
@@ -71,7 +71,7 @@ public:
     DroneConfig get_config() { return this->config; }
     bool is_armed() { return this->armed; }
 
-    void update(double dt) override;
+    void update(boost::chrono::milliseconds ms) override;
     MAVLinkMessageRelay& get_mavlink_message_relay() override;
     // Receives mavlink message from non-main thread
     // Should store messages in queue and process them within the update loop.

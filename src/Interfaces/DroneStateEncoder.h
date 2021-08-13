@@ -17,10 +17,6 @@ protected:
         quaternion[3] = cos(roll/2) * cos(pitch/2) * cos(yaw/2) + sin(roll/2) * sin(pitch/2) * sin(yaw/2);
     }
 
-    // void extract(Eigen::VectorXd src, Eigen::VectorXd dest, uint from, uint len) {
-
-    // }
-
     void get_attitude(float* attitude) { // <float(4)>
         Eigen::VectorXd& state = this->get_vector_state();
         const float* euler = (const float*) state.data() + 6;
@@ -63,10 +59,10 @@ public:
     /**
      * Drone state as populated by the CAELUS_FDM package.
      * <
-     *  x , y , z    [0:3]  body-frame origin with respect to earth-frame (What unit?)
-     *  ẋ , ẏ , ż    [3:6]  body-frame velocity (What unit?)
-     *  ɸ , θ , ѱ    [6:9]  (roll, pitch, yaw) body-frame orientation with respect to earth-frame
-     *  ɸ. , θ. , ѱ. [9:12] (roll., pitch., yaw.) body-frame orientation velocity
+     *  x , y , z    [0:3]  body-frame origin with respect to earth-frame (NED m)
+     *  ẋ , ẏ , ż    [3:6]  body-frame velocity (m/s)
+     *  ɸ , θ , ѱ    [6:9]  (roll, pitch, yaw) body-frame orientation with respect to earth-frame (rad/s)
+     *  ɸ. , θ. , ѱ. [9:12] (roll., pitch., yaw.) body-frame orientation velocity (rad/s**2)
      * >
      */
     virtual Eigen::VectorXd& get_vector_state() = 0;
@@ -74,7 +70,7 @@ public:
      *  (FixedWingEOM.h:evaluate)
      *  Drone state derivative as populated by the CAELUS_FDM package.
      *  ẋ , ẏ , ż       [0:3]  earth-frame velocity (What unit?)
-     *  ẍ , ÿ , z̈       [3:6]  body-frame acceleration (What unit?)
+     *  ẍ , ÿ , z̈       [3:6]  body-frame acceleration (m/s**2)
      *  ? , ? , ?       [6:9]  earth-frame angle rates (Euler rates?)
      *  ɸ.. , θ.. , ѱ.. [9:12] body-frame angular acceleration (What unit?)
      */

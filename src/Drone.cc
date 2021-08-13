@@ -17,7 +17,7 @@ Drone::Drone(char* config_file, MAVLinkMessageRelay& connection) :
     dynamics_solver(),
     connection(connection)
     {
-        this->connection.set_message_handler(this);
+        this->connection.add_message_handler(this);
         this->_setup_drone();
     }
 
@@ -29,14 +29,14 @@ void Drone::_setup_drone() {
         { return this->ailerons.control(dt); });
 }
 
-void Drone::update(double dt) {
-    MAVLinkSystem::update(dt);
+void Drone::update(boost::chrono::milliseconds ms) {
+    MAVLinkSystem::update(ms);
     this->_process_mavlink_messages();
     this->_publish_state();
-    this->_step_dynamics(dt);
+    this->_step_dynamics(ms);
 }
 
-void Drone::_step_dynamics(double dt) {
+void Drone::_step_dynamics(boost::chrono::milliseconds ms) {
     this->dynamics_solver.do_step(
         [this] (const Eigen::VectorXd & x, Eigen::VectorXd &dx, const double t) -> void
                 {
@@ -45,10 +45,9 @@ void Drone::_step_dynamics(double dt) {
                 }
         ,
         this->state,
-        this->drone_time,
-        dt
+        this->get_sim_time(),
+        ms.count()
     );
-    this->drone_time += dt;
 }
 
 MAVLinkMessageRelay& Drone::get_mavlink_message_relay() {
@@ -65,21 +64,20 @@ void Drone::_publish_hil_state_quaternion() {
     ConsoleLogger* logger = ConsoleLogger::shared_instance();
     mavlink_message_t msg = this->hil_state_quaternion_msg(this->system_id, this->component_id);
     logger->debug_log("Publishing HIL_STATE_QUATERNION message");
-    this->connection.send_message(msg);
+    this->connection.enqueue_message(msg);
 }
 
 void Drone::_publish_state() {
     if (!this->connection.connection_open()) return;
 
-    auto now = std::chrono::steady_clock::now();
     bool should_send_autopilot_telemetry = 
         std::chrono::duration_cast<std::chrono::milliseconds>
-        (now - this->last_autopilot_telemetry).count()
+        (this->time - this->last_autopilot_telemetry).count()
         > this->hil_state_quaternion_message_frequency;
 
     if (!should_send_autopilot_telemetry) return;
 
-    this->last_autopilot_telemetry = now;
+    this->last_autopilot_telemetry = this->time;
     this->_publish_hil_gps();
     this->_publish_hil_state_quaternion();
 }
@@ -105,7 +103,7 @@ void Drone::_process_command_long_message(mavlink_message_t m) {
     }
     
     mavlink_msg_command_ack_pack(this->system_id, this->component_id, &command_ack_msg, command_id, 0, 0, 0, command.target_system, command.target_component);
-    this->connection.send_message(command_ack_msg);
+    this->connection.enqueue_message(command_ack_msg);
 }
 
 void Drone::_process_hil_actuator_controls(mavlink_message_t m) {
