@@ -10,6 +10,7 @@ class Ailerons : public AsyncDroneControl {
 private:
     Eigen::VectorXd _last_control{AILERONS_N};
 public:
+    Ailerons();
     // [0] Left
     // [1] Right
     Eigen::VectorXd control(double dt) override;

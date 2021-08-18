@@ -21,9 +21,9 @@ void Simulator::add_environment_object(EnvironmentObject& e) {
     this->env_objects.push_back(&e);
 }
 
-void Simulator::update(boost::chrono::milliseconds ms) {
+void Simulator::update(boost::chrono::microseconds us) {
     for (auto e : this->env_objects) {
-        e->update(ms);
+        e->update(us);
     }
 }
 
@@ -35,16 +35,14 @@ void Simulator::start() {
     this->logger->log(SIMULATION_STARTED);
     while(!this->should_shutdown) {
         if (this->config.running_lockstep) {
-            boost::chrono::milliseconds time_increment = this->should_advance_time ? 
-                this->config.timestep_ms :
-                boost::chrono::milliseconds{0};
+            boost::chrono::microseconds time_increment = this->get_config().timestep_ms;
             this->update(time_increment);
             this->simulation_time += time_increment;    
-            this->should_advance_time = false;
+            this->should_advance_time = true;
         } else {
             this->update(this->config.timestep_ms);
             this->simulation_time += this->config.timestep_ms;
-            boost::this_thread::sleep_for(boost::chrono::milliseconds(this->config.timestep_ms));
+            boost::this_thread::sleep_for(boost::chrono::microseconds(this->config.timestep_ms));
         }
     }
 }

@@ -8,8 +8,19 @@ DroneConfig config_from_file_path(char* path) {
     return conf;
 }
 
+void pp_state(const Eigen::VectorXd state) {
+    double s[12] = {0};
+    for (int i = 0; i < 12; i++) s[i] = state.data()[i];
+    std::cout << "<==========" << std::endl;
+    std::cout << "X:" << s[0] << ", Y:" << s[1] << ", Z:" << s[2] << std::endl; 
+    std::cout << "Xdot: " << s[3] << ", Ydot: " << s[4] << ", Zdot: " << s[5] << std::endl;
+    std::cout << "Phi:" << s[6] << ", Theta:" << s[7] << ", Psy:" << s[8] << std::endl; 
+    std::cout << "Phidot:" << s[9] << ", Thetadot:" << s[10] << ", Psydot:" << s[11] << std::endl; 
+    std::cout << "==========>" << std::endl;
+}
+
 Drone::Drone(char* config_file, MAVLinkMessageRelay& connection) : 
-    MAVLinkSystem::MAVLinkSystem(1, 200),
+    MAVLinkSystem::MAVLinkSystem(1, 1),
     state(STATE_SIZE),
     dx_state(STATE_SIZE),
     config(config_from_file_path(config_file)),
@@ -19,6 +30,13 @@ Drone::Drone(char* config_file, MAVLinkMessageRelay& connection) :
     {
         this->connection.add_message_handler(this);
         this->_setup_drone();
+        for (int i = 0; i < STATE_SIZE; i++) {
+            this->state[i] = 0;
+            this->dx_state[i] = 0;
+        } 
+        // This is a hack, please check with Gianluca what's going on.
+        // If state[3] is initialised to 0 the ODE solver populates the state with nan(s).
+        this->state[2] = 0; this->state[3] = 28; 
     }
 
 void Drone::_setup_drone() {
@@ -29,25 +47,27 @@ void Drone::_setup_drone() {
         { return this->ailerons.control(dt); });
 }
 
-void Drone::update(boost::chrono::milliseconds ms) {
-    MAVLinkSystem::update(ms);
+void Drone::update(boost::chrono::microseconds us) {
+    MAVLinkSystem::update(us);
     this->_process_mavlink_messages();
     this->_publish_state();
-    this->_step_dynamics(ms);
+    this->_step_dynamics(us);
 }
 
-void Drone::_step_dynamics(boost::chrono::milliseconds ms) {
+void Drone::_step_dynamics(boost::chrono::microseconds us) {
     this->dynamics_solver.do_step(
         [this] (const Eigen::VectorXd & x, Eigen::VectorXd &dx, const double t) -> void
                 {
                     this->dynamics.evaluate(t,x,dx);
                     this->dx_state = dx;
+                    this->state = x;
                 }
         ,
         this->state,
-        this->get_sim_time(),
-        ms.count()
+        this->get_sim_time() / 1000, // to ms
+        0.01// us.count() / 1000 // to ms
     );
+    this->time += us;
 }
 
 MAVLinkMessageRelay& Drone::get_mavlink_message_relay() {
@@ -55,30 +75,39 @@ MAVLinkMessageRelay& Drone::get_mavlink_message_relay() {
 }
 
 void Drone::_publish_hil_gps() {
-    ConsoleLogger* logger = ConsoleLogger::shared_instance();
-    logger->debug_log("Publishing HIL_GPS message");
+    this->connection.enqueue_message(
+        this->hil_gps_msg(this->system_id, this->component_id)
+    );
+}
+
+void Drone::_publish_system_time() {
+    this->connection.enqueue_message(
+        this->system_time_msg(this->system_id, this->component_id)
+    );
+}
+
+void Drone::_publish_hil_sensor() {
+    this->connection.enqueue_message(this->hil_sensor_msg(this->system_id, this->component_id));
 }
 
 void Drone::_publish_hil_state_quaternion() {
-    
-    ConsoleLogger* logger = ConsoleLogger::shared_instance();
     mavlink_message_t msg = this->hil_state_quaternion_msg(this->system_id, this->component_id);
-    logger->debug_log("Publishing HIL_STATE_QUATERNION message");
     this->connection.enqueue_message(msg);
 }
 
 void Drone::_publish_state() {
     if (!this->connection.connection_open()) return;
 
+    this->last_autopilot_telemetry = this->time;
+    this->_publish_hil_gps();
+    this->_publish_hil_sensor();
+    this->_publish_system_time();
+
     bool should_send_autopilot_telemetry = 
-        std::chrono::duration_cast<std::chrono::milliseconds>
         (this->time - this->last_autopilot_telemetry).count()
         > this->hil_state_quaternion_message_frequency;
 
     if (!should_send_autopilot_telemetry) return;
-
-    this->last_autopilot_telemetry = this->time;
-    this->_publish_hil_gps();
     this->_publish_hil_state_quaternion();
 }
 
@@ -123,6 +152,7 @@ void Drone::_process_mavlink_message(mavlink_message_t m) {
             break;
         case MAVLINK_MSG_ID_HIL_ACTUATOR_CONTROLS:
             logger->debug_log("MSG: HIL_ACTUATOR_CONTROLS");
+            this->_process_hil_actuator_controls(m);
             break;
         case MAVLINK_MSG_ID_HIL_CONTROLS:
             logger->debug_log("MSG: HIL_CONTROLS");
@@ -150,7 +180,7 @@ void Drone::handle_mavlink_message(mavlink_message_t m) {
 #pragma mark DroneStateEncoder
 
 uint64_t Drone::get_sim_time() {
-    return 0;
+    return this->time.count();
 }
 
 Eigen::VectorXd& Drone::get_vector_state() {

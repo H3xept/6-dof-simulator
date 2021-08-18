@@ -25,7 +25,8 @@ struct MatrixXd : public Eigen::MatrixXd {
         for (int i = 0; i < m.rows(); i++) {
             for (int j = 0; j < m.cols(); j++) {
                 is >> m(i,j);
-            }
+                
+            } printf("%f %f %f\n", m(i, 0), m(i, 1), m(i, 2));
         }
         return is;
     }

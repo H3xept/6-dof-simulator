@@ -28,9 +28,9 @@ public:
     virtual double get_heartbeat_interval() { return this->heartbeat_interval; }
     virtual void set_heartbeat_interval(double interval) { this->heartbeat_interval = interval; }
 
-    void update(boost::chrono::milliseconds ms) override {
+    void update(boost::chrono::microseconds us) override {
         auto now = std::chrono::steady_clock::now();
-        double elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(now - this->last_heartbeat).count();
+        double elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(now - this->last_heartbeat).count();
         if (elapsed_time >= this->heartbeat_interval) {
             this->send_heartbeat();
             this->last_heartbeat = now;
@@ -41,7 +41,7 @@ public:
         MAVLinkMessageRelay& relay = this->get_mavlink_message_relay();
         if (!relay.connection_open()) { return; }
         mavlink_message_t hb;
-        mavlink_msg_heartbeat_pack(this->system_id, this->component_id, &hb, MAV_TYPE_VTOL_QUADROTOR, MAV_AUTOPILOT_PX4, MAV_MODE_GUIDED_ARMED, 0, MAV_STATE_ACTIVE);
+        mavlink_msg_heartbeat_pack(this->system_id, this->component_id, &hb, MAV_TYPE_VTOL_QUADROTOR, MAV_AUTOPILOT_PX4, MAV_MODE_FLAG_GUIDED_ENABLED, 0, MAV_STATE_STANDBY);
         relay.send_message(hb);
     }
 

@@ -14,14 +14,16 @@
 #define SIMULATION_RESUMED "Simulation resumed."
 
 struct SimulatorConfig {
-    boost::chrono::milliseconds timestep_ms;
+    boost::chrono::microseconds timestep_ms;
     double max_speed_multiplier;
     bool running_lockstep;
 
     SimulatorConfig(long timestep_ms, double max_speed_multiplier, bool running_lockstep) :
         timestep_ms(timestep_ms),
         max_speed_multiplier(max_speed_multiplier),
-        running_lockstep(running_lockstep) {};
+        running_lockstep(running_lockstep) {
+            printf("Simulator has timestep of %ld (%lld)\n", timestep_ms, this->timestep_ms.count());
+        };
 };
 
 class Simulator : 
@@ -33,7 +35,7 @@ private:
     MAVLinkMessageRelay& message_relay;
     boost::lockfree::queue<mavlink_message_t, boost::lockfree::capacity<50>> message_queue;
     
-    boost::chrono::milliseconds simulation_time{0};
+    boost::chrono::microseconds simulation_time{0};
 
     bool should_advance_time = false;
     bool should_shutdown = false;
@@ -53,7 +55,7 @@ public:
 
     void add_environment_object(EnvironmentObject& e) override;
 
-    void update(boost::chrono::milliseconds ms) override;
+    void update(boost::chrono::microseconds ms) override;
     void start() override;
     void pause() override;
     void resume() override;

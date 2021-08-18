@@ -5,7 +5,7 @@
 
 class TimeHandler {
 public:
-    virtual void update(boost::chrono::milliseconds ms) = 0;
+    virtual void update(boost::chrono::microseconds us) = 0;
 };
 
 #endif // __TIMEHANDLER_H__
