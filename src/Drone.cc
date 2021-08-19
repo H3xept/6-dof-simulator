@@ -136,7 +136,8 @@ void Drone::_process_command_long_message(mavlink_message_t m) {
 }
 
 void Drone::_process_hil_actuator_controls(mavlink_message_t m) {
-
+    
+    printf("OK\n");
     mavlink_hil_actuator_controls_t controls;
     mavlink_msg_hil_actuator_controls_decode(&m, &controls);
     this->armed = (controls.mode & MAV_MODE_FLAG_SAFETY_ARMED) > 0;

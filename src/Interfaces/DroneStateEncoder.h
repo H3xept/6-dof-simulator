@@ -26,8 +26,7 @@ protected:
 
     void get_rpy_speed(float* rpy) { // <float(3)>
         Eigen::VectorXd state = this->get_vector_state();
-        const float* euler = (const float*) state.data() + 6;
-        for (uint i = 0; i < 3; i++) *(rpy+i) = *(euler+i);
+        for (uint i = 0; i < 3; i++) *(rpy+i) = state[i + 9];
     } 
     
     /**
@@ -40,12 +39,11 @@ protected:
     } 
     
     /**
-     * Acceleration (ẍ , ÿ , z̈) in mG
+     * Body frame (NED) acceleration (ẍ , ÿ , z̈) in mG
      */
-    void get_acceleration(int16_t* x_y_z) { // <int16_t(3)>
+    void get_body_frame_acceleration(float* x_y_z) { // <float(3)>
         Eigen::VectorXd state_derivative = this->get_vector_dx_state();
-        const int16_t* acceleration = (const int16_t*) state_derivative.data() + 3;
-        for (uint i = 0; i < 3; i++) *(x_y_z+i) = *(acceleration+i);
+        for (uint i = 0; i < 3; i++) *(x_y_z+i) = state_derivative[3 + i];
     } 
 
     void get_lat_lon_alt(float* lat_lon_alt) {  // <float(3)>
@@ -89,7 +87,7 @@ public:
         // this->get_rpy_speed((float*)&rpy_speed);
         // this->get_lat_lon_alt((float*)&lat_lon_alt);
         // this->get_ground_speed((int16_t*)&ground_speed);
-        // this->get_acceleration((int16_t*)&acceleration);
+        // this->get_body_frame_acceleration((int16_t*)&acceleration);
 
         mavlink_msg_hil_state_quaternion_pack(
             system_id,
@@ -120,15 +118,15 @@ public:
         mavlink_message_t msg;
         
         float body_frame_acc[3] = {0}; // m/s**2
-        float rpy_velocity[3] = {0}; // rad/s
+        float gyro_xyz[3] = {0}; // rad/s
         float magfield[3] = {0}; // gauss
         float abs_pressure = 1033.0; // hPa // Random value from (http://www.isleofskyeweather.co.uk/wxbarosummary.php)
         float diff_pressure = abs_pressure;
         float pressure_alt = 100; // Fixed value
         float temperature = 25; // degC
 
-        // this->get_acceleration((int16_t*)&body_frame_acc);
-        // this->get_rpy_speed((float*)&rpy_velocity);
+        this->get_body_frame_acceleration((float*)body_frame_acc);
+        this->get_rpy_speed((float*) gyro_xyz);
 
         // mavlink_msg_hil_sensor_pack(
         //     system_id,
@@ -138,9 +136,9 @@ public:
         //     body_frame_acc[0],
         //     body_frame_acc[1],
         //     body_frame_acc[2],
-        //     rpy_velocity[0],
-        //     rpy_velocity[1],
-        //     rpy_velocity[2],
+        //     gyro_xyz[0],
+        //     gyro_xyz[1],
+        //     gyro_xyz[2],
         //     magfield[0],
         //     magfield[1],
         //     magfield[2],
@@ -157,20 +155,20 @@ public:
             component_id,
             &msg,
             this->get_sim_time(),
-            -0.080828115,
-            -0.016155029,
-            -9.821199,
-            8.8405056E-4,
-            0.015684023,
-            -0.012021145,
+            body_frame_acc[0],
+            body_frame_acc[1],
+            body_frame_acc[2],
+            gyro_xyz[0],
+            gyro_xyz[1],
+            gyro_xyz[2],
             0.22425878,
             0.009292492,
             0.43060538,
-            955.9909,
+            abs_pressure,
             0.0,
             488.17853,
             0,
-            7167,
+            4095,
             0
         );
 
