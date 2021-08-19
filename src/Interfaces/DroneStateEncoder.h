@@ -130,28 +130,49 @@ public:
         // this->get_acceleration((int16_t*)&body_frame_acc);
         // this->get_rpy_speed((float*)&rpy_velocity);
 
-        
+        // mavlink_msg_hil_sensor_pack(
+        //     system_id,
+        //     component_id,
+        //     &msg,
+        //     this->get_sim_time(),
+        //     body_frame_acc[0],
+        //     body_frame_acc[1],
+        //     body_frame_acc[2],
+        //     rpy_velocity[0],
+        //     rpy_velocity[1],
+        //     rpy_velocity[2],
+        //     magfield[0],
+        //     magfield[1],
+        //     magfield[2],
+        //     abs_pressure,
+        //     diff_pressure,
+        //     pressure_alt,
+        //     temperature,
+        //     1 << 31, // All values are fresh
+        //     0
+        //     );
+
         mavlink_msg_hil_sensor_pack(
             system_id,
             component_id,
             &msg,
             this->get_sim_time(),
-            body_frame_acc[0],
-            body_frame_acc[1],
-            body_frame_acc[2],
-            rpy_velocity[0],
-            rpy_velocity[1],
-            rpy_velocity[2],
-            magfield[0],
-            magfield[1],
-            magfield[2],
-            abs_pressure,
-            diff_pressure,
-            pressure_alt,
-            temperature,
-            1 << 31, // All values are fresh
+            -0.080828115,
+            -0.016155029,
+            -9.821199,
+            8.8405056E-4,
+            0.015684023,
+            -0.012021145,
+            0.22425878,
+            0.009292492,
+            0.43060538,
+            955.9909,
+            0.0,
+            488.17853,
+            0,
+            7167,
             0
-            );
+        );
 
         return msg;
     }

@@ -10,6 +10,7 @@
 
 using namespace boost::asio;
 
+
 class MAVLinkSystem : public Alive, public TimeHandler {
 private:
     // Milliseconds
@@ -41,7 +42,7 @@ public:
         MAVLinkMessageRelay& relay = this->get_mavlink_message_relay();
         if (!relay.connection_open()) { return; }
         mavlink_message_t hb;
-        mavlink_msg_heartbeat_pack(this->system_id, this->component_id, &hb, MAV_TYPE_VTOL_QUADROTOR, MAV_AUTOPILOT_PX4, MAV_MODE_FLAG_GUIDED_ENABLED, 0, MAV_STATE_STANDBY);
+        mavlink_msg_heartbeat_pack(this->system_id, this->component_id, &hb, MAV_TYPE_VTOL_QUADROTOR, MAV_AUTOPILOT_PX4, MAV_MODE_FLAG_HIL_ENABLED, 0, MAV_STATE_STANDBY);
         relay.send_message(hb);
     }
 

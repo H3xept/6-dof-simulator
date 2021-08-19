@@ -136,12 +136,20 @@ void Drone::_process_command_long_message(mavlink_message_t m) {
 }
 
 void Drone::_process_hil_actuator_controls(mavlink_message_t m) {
+
     mavlink_hil_actuator_controls_t controls;
     mavlink_msg_hil_actuator_controls_decode(&m, &controls);
-    this->armed = (controls.flags & MAV_MODE_FLAG_SAFETY_ARMED) > 0;
-    for (int i = 0; i < 16; i++) {
-        printf("Control %d -> %f\n", i, controls.controls[i]);
-    }
+    this->armed = (controls.mode & MAV_MODE_FLAG_SAFETY_ARMED) > 0;
+    
+    Eigen::VectorXd vtol_prop_controls{4};
+    for (int i = 0; i < 4; i++) vtol_prop_controls[i] = controls.controls[i];
+    Eigen::VectorXd ailerons_controls{2};
+    for (int i = 0; i < 2; i++) ailerons_controls[i] = controls.controls[4+i];
+    Eigen::VectorXd propeller_controls{1};
+    for (int i = 0; i < 1; i++) propeller_controls[i] = controls.controls[8+i];
+
+    this->propellers.set_control(propeller_controls);
+    this->propellers.set_control(ailerons_controls);
 }
 
 void Drone::_process_mavlink_message(mavlink_message_t m) {
@@ -152,10 +160,6 @@ void Drone::_process_mavlink_message(mavlink_message_t m) {
             break;
         case MAVLINK_MSG_ID_HIL_ACTUATOR_CONTROLS:
             logger->debug_log("MSG: HIL_ACTUATOR_CONTROLS");
-            this->_process_hil_actuator_controls(m);
-            break;
-        case MAVLINK_MSG_ID_HIL_CONTROLS:
-            logger->debug_log("MSG: HIL_CONTROLS");
             this->_process_hil_actuator_controls(m);
             break;
         case MAVLINK_MSG_ID_COMMAND_LONG:

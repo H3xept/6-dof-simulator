@@ -1,6 +1,8 @@
 #include "MAVLinkConnectionHandler.h"
 #include "../Logging/ConsoleLogger.h"
 
+static ConsoleLogger* c = ConsoleLogger::shared_instance();
+
 MAVLinkConnectionHandler::MAVLinkConnectionHandler(io_service& service, ConnectionTarget target) : 
     tcp_acceptor(service, (int)target) {
         this->tcp_acceptor.add_data_receiver(this);
@@ -19,7 +21,6 @@ bool MAVLinkConnectionHandler::parse_mavlink_message(const char* buff, size_t le
 void MAVLinkConnectionHandler::receive_data(const char* buff, size_t len) {
     mavlink_message_t msg;
     mavlink_status_t status;
-    printf("Some data is being received\n");
     if (this->parse_mavlink_message(buff, len, msg, status)) {
         this->received_message(msg);
     }
@@ -32,7 +33,6 @@ size_t MAVLinkConnectionHandler::send_data(const void* buff, size_t len) {
 }
 
 bool MAVLinkConnectionHandler::received_message(mavlink_message_t m) {
-    printf("Received mavlink message! (%d)\n", m.msgid);
     for (auto h : this->message_handlers) 
         h->handle_mavlink_message(m);
 }
@@ -49,7 +49,7 @@ bool MAVLinkConnectionHandler::send_message(const mavlink_message_t& m) {
     int bytes_sent = this->tcp_acceptor.send_data(&buf, len);
     if (bytes_sent > 0) ; //fprintf(stdout, "Sent mavlink message (%d bytes)\n", bytes_sent);
     else {
-        fprintf(stderr, "Error in sending MAVLink message.\n");
+        c->debug_log("Error in sending MAVLink message.\n");
         return false;
     }
     return true;
