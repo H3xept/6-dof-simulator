@@ -3,11 +3,12 @@
 #include "Simulator.h"
 #include "Drone.h"
 #include <boost/thread.hpp>
-
 #include "Sockets/MAVLinkConnectionHandler.h"
+#include <Eigen/Eigen>
 
 int main(int argc, char const *argv[])
 {
+
     ConsoleLogger* cl = ConsoleLogger::shared_instance();
     cl->set_debug(false);
 

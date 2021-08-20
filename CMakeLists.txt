@@ -15,6 +15,7 @@ configure_file(${PROJECT_SOURCE_DIR}/src/Sim6DOFInfo.h.in ${PROJECT_SOURCE_DIR}/
 target_include_directories(6dof PUBLIC
                            ${PROJECT_BINARY_DIR}
                            )
+add_definitions( -DCURL_STATICLIB )
 # CAELUS_FDM Headers
 include_directories(PUBLIC "/usr/local/include/caelus_fdm/")
 # Eigen Headers
@@ -27,4 +28,4 @@ find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 include_directories(${Boost_INCLUDE_DIRS})
 
 add_subdirectory(dependencies)
-target_link_libraries(6dof PUBLIC caelus_fdm Eigen3::Eigen ${Boost_LIBRARIES})
+target_link_libraries(6dof PUBLIC caelus_fdm Eigen3::Eigen ${Boost_LIBRARIES} curl)

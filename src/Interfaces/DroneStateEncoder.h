@@ -1,9 +1,12 @@
 #ifndef __DRONESTATE_H__
 #define __DRONESTATE_H__
 
+#include "../Helpers/magnetic_field_lookup.h"
+#include <cmath>
 #include <boost/chrono.hpp>
 #include <Eigen/Eigen>
 #include <mavlink.h>
+#include <EquationsOfMotion/rotationMatrix.h>
 
 class DroneStateEncoder {
 protected:
@@ -26,7 +29,7 @@ protected:
 
     void get_rpy_speed(float* rpy) { // <float(3)>
         Eigen::VectorXd state = this->get_vector_state();
-        for (uint i = 0; i < 3; i++) *(rpy+i) = state[i + 9];
+        for (uint i = 0; i < 3; i++) *(rpy+i) = state[i + 6];
     } 
     
     /**
@@ -34,22 +37,44 @@ protected:
      */
     void get_ground_speed(int16_t* x_y_z) { // <int16_t(3)>
         Eigen::VectorXd state_derivative = this->get_vector_dx_state();
-        const int16_t* ground_speed = (const int16_t*) state_derivative.data();
-        for (uint i = 0; i < 3; i++) *(x_y_z+i) = *(ground_speed+i);
+        for (uint i = 0; i < 3; i++) x_y_z[i] = state_derivative[i];
+        x_y_z[0] *= 100;
+        x_y_z[1] *= 100;
+        x_y_z[2] *= 100;
     } 
     
     /**
      * Body frame (NED) acceleration (ẍ , ÿ , z̈) in mG
      */
     void get_body_frame_acceleration(float* x_y_z) { // <float(3)>
+#define G_FORCE 9.81
         Eigen::VectorXd state_derivative = this->get_vector_dx_state();
         for (uint i = 0; i < 3; i++) *(x_y_z+i) = state_derivative[3 + i];
     } 
 
-    void get_lat_lon_alt(float* lat_lon_alt) {  // <float(3)>
-        Eigen::VectorXd state_derivative = this->get_vector_dx_state();
-        const float* _lat_lon_alt = (const float*) state_derivative.data();
-        for (uint i = 0; i < 3; i++) *(lat_lon_alt+i) = *(_lat_lon_alt+i);
+    /**
+     * Body frame origin (x,y,z) in NED with respect to earth frame
+     */
+    void get_body_frame_origin(float* x_y_z) { // <float(3)>
+        Eigen::VectorXd state = this->get_vector_state();
+        for (uint i = 0; i < 3; i++) *(x_y_z+i) = state[i];
+    }
+    
+    /**
+     * lat: [degE7]
+     * lon: [degE7]
+     * alt: [mm]
+     */
+    void get_lat_lon_alt(int32_t* lat_lon_alt) {  // <int32_t(3)>
+// UK Grid origin
+#define INITIAL_LAT 49.766809
+#define INITIAL_LON -7.5571598
+        Eigen::VectorXd state = this->get_vector_state();
+        double d_lat_lon_alt[3] = {0};
+        caelus_fdm::convertState2LlA(INITIAL_LAT, INITIAL_LON, state, d_lat_lon_alt[0], d_lat_lon_alt[1], d_lat_lon_alt[2]);
+        lat_lon_alt[0] = (int32_t)(d_lat_lon_alt[0]);
+        lat_lon_alt[1] = (int32_t)(d_lat_lon_alt[1]);
+        lat_lon_alt[2] = (int32_t)((d_lat_lon_alt[2] * 1000)); // m to mm
     }
     
 public:
@@ -79,22 +104,34 @@ public:
         mavlink_message_t msg;
         float attitude[4] = {0};
         float rpy_speed[3] = {0};
-        float lat_lon_alt[3] = {0};
+        int32_t lat_lon_alt[3] = {0};
         int16_t ground_speed[3] = {0};
+        float f_acceleration[3] = {0};
         int16_t acceleration[3] = {0};
 
-        // this->get_attitude((float*)&attitude);
-        // this->get_rpy_speed((float*)&rpy_speed);
-        // this->get_lat_lon_alt((float*)&lat_lon_alt);
-        // this->get_ground_speed((int16_t*)&ground_speed);
-        // this->get_body_frame_acceleration((int16_t*)&acceleration);
+        this->get_attitude((float*)attitude);
+        this->get_rpy_speed((float*)rpy_speed);
+        this->get_lat_lon_alt((int32_t*)lat_lon_alt);
+        this->get_ground_speed((int16_t*)ground_speed);
+
+        this->get_body_frame_acceleration((float*)f_acceleration);
+        // m/s**2 to mG (milli Gs)
+        acceleration[0] = (int16_t)std::round((f_acceleration[0] / G_FORCE) * 1000);
+        acceleration[1] = (int16_t)std::round((f_acceleration[1] / G_FORCE) * 1000);
+        acceleration[2] = (int16_t)std::round((f_acceleration[2] / G_FORCE) * 1000);
+
+        // Vector3d airSpeed = new Vector3d(vehicle.getVelocity());
+        // airSpeed.scale(-1.0);
+        // airSpeed.add(vehicle.getWorld().getEnvironment().getCurrentWind(vehicle.position));
+        // float as_mag = (float) airSpeed.length();
+        // msg_hil_state.set("true_airspeed", (int)(as_mag * 100));
 
         mavlink_msg_hil_state_quaternion_pack(
             system_id,
             component_id,
             &msg,
             this->get_sim_time(),
-            (float*)&attitude,
+            (float*)attitude,
             rpy_speed[0],
             rpy_speed[1],
             rpy_speed[2],
@@ -117,6 +154,7 @@ public:
     mavlink_message_t hil_sensor_msg(uint8_t system_id, uint8_t component_id) {
         mavlink_message_t msg;
         
+        int32_t lat_lon_alt[3] = {0};
         float body_frame_acc[3] = {0}; // m/s**2
         float gyro_xyz[3] = {0}; // rad/s
         float magfield[3] = {0}; // gauss
@@ -127,28 +165,10 @@ public:
 
         this->get_body_frame_acceleration((float*)body_frame_acc);
         this->get_rpy_speed((float*) gyro_xyz);
+        this->get_lat_lon_alt((int32_t*)lat_lon_alt);
 
-        // mavlink_msg_hil_sensor_pack(
-        //     system_id,
-        //     component_id,
-        //     &msg,
-        //     this->get_sim_time(),
-        //     body_frame_acc[0],
-        //     body_frame_acc[1],
-        //     body_frame_acc[2],
-        //     gyro_xyz[0],
-        //     gyro_xyz[1],
-        //     gyro_xyz[2],
-        //     magfield[0],
-        //     magfield[1],
-        //     magfield[2],
-        //     abs_pressure,
-        //     diff_pressure,
-        //     pressure_alt,
-        //     temperature,
-        //     1 << 31, // All values are fresh
-        //     0
-        //     );
+        Eigen::VectorXd mag_field_vec = magnetic_field_for_latlonalt((int32_t*)lat_lon_alt);
+        for (int i = 0; i < mag_field_vec.size(); i++) magfield[i] = mag_field_vec[i];
 
         mavlink_msg_hil_sensor_pack(
             system_id,
@@ -161,9 +181,9 @@ public:
             gyro_xyz[0],
             gyro_xyz[1],
             gyro_xyz[2],
-            0.22425878,
-            0.009292492,
-            0.43060538,
+            magfield[0],
+            magfield[1],
+            magfield[2],
             abs_pressure,
             0.0,
             488.17853,
