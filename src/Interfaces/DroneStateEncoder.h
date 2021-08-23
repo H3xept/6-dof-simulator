@@ -2,7 +2,7 @@
 #define __DRONESTATE_H__
 
 #include "../Helpers/magnetic_field_lookup.h"
-#include "ConsoleLogger.h"
+#include "../Logging/ConsoleLogger.h"
 #include <cmath>
 #include <boost/chrono.hpp>
 #include <Eigen/Eigen>
@@ -64,11 +64,10 @@ protected:
     void get_earth_fixed_velocity(int16_t* xyz) { //<int16_t(3)>
         
         Eigen::VectorXd state = this->get_vector_state();
-        double xyz_dot_body_frame[3] = {0};
-        for (uint i = 0; i < 3; i++) *(xyz_dot_body_frame+i) = state[3 + i];
+        Eigen::VectorXd xyz_dot_body_frame = state.segment(3,3);
 
         Eigen::MatrixXd body_to_earth_rot = caelus_fdm::body2earth(state);
-        Eigen::VectorXd earth_frame_velocity = body_to_earth_rot * xyz;
+        Eigen::VectorXd earth_frame_velocity = body_to_earth_rot * xyz_dot_body_frame.transpose();
 
         for (uint i = 0; i < 3; i++) *(xyz+i) = earth_frame_velocity[i];
     }   
@@ -99,13 +98,14 @@ protected:
         int16_t ground_speed[3] = {0};
         this->get_ground_speed((int16_t*)ground_speed);   
 
-        Eigen::VectorXd ground_speed_vec{3};
+        Eigen::Vector3d ground_speed_vec{3};
         for (uint i = 0; i < sizeof(ground_speed) / sizeof(int16_t); i++)
             ground_speed_vec[i] = ground_speed[i];
 
         // Environment wind is assumed to be in m/s -- cm/s is required.
-        Eigen::VectorXd environment_wind = this->get_environment_wind() * 100; 
-        double wind_magnitude = (ground_speed_vec * -1).addTo(environment_wind).norm();
+        Eigen::Vector3d environment_wind = this->get_environment_wind() * 100; 
+        Eigen::Vector3d cumulative_wind = (ground_speed_vec + environment_wind) * -1;
+        double wind_magnitude = cumulative_wind.norm();
         *wind_speed = (uint16_t)wind_magnitude;
     }
 
@@ -117,7 +117,7 @@ protected:
         float xyz_dot[3] = {0};
         for (uint i = 0; i < 3; i++) *(xyz_dot+i) = state[i + 3];
         // Maybe convert xyz to earth frame?
-        *cog = ((atan2(xyz_dot[0], xyz_dot[1]) * 180) / M_PI) * 100 // Deg => cDeg
+        *cog = ((atan2(xyz_dot[0], xyz_dot[1]) * 180) / M_PI) * 100; // Deg => cDeg
     }
 
     /**
@@ -128,7 +128,7 @@ protected:
      */
     void get_vehicle_yaw_wrt_earth_north(uint16_t* yaw) { // <uint16_t(1)>
         Eigen::VectorXd state = this->get_vector_state();
-        ConsoleLogger logger = ConsoleLogger::shared_instance();
+        ConsoleLogger* logger = ConsoleLogger::shared_instance();
         *yaw = (uint16_t)std::round((((state[8]) * 180) / M_PI) * 100);
         if (*yaw == 0) {
             logger->debug_log("[Warning] YAW is ZERO -- PX4 will interpret this as no-yaw!");
@@ -137,11 +137,10 @@ protected:
 
 public:
     virtual uint64_t get_sim_time() = 0;
-    
     // Environment wind in m/s
-    virtual Eigen::VectorXd get_environment_wind();
+    virtual Eigen::Vector3d get_environment_wind() = 0;
     // Temperature in [degC]
-    virtual float get_temperature_reading();
+    virtual float get_temperature_reading() = 0;
 
     /**
      * Drone state as populated by the CAELUS_FDM package.
@@ -171,7 +170,7 @@ public:
         int16_t ground_speed[3] = {0};
         float f_acceleration[3] = {0};
         int16_t acceleration[3] = {0};
-        int16_t true_wind_speed = 0;
+        uint16_t true_wind_speed = 0;
 
         this->get_attitude((float*)attitude);
         this->get_rpy_speed((float*)rpy_speed);
@@ -272,18 +271,18 @@ public:
         uint8_t sat_visible = UINT8_MAX;
         // Vehicle yaw relative to earth's north
         // Yaw of vehicle relative to Earth's North, zero means not available, use 36000 for north
-        uint8_t vehicle_yaw = 0; // 0 means not available
+        uint16_t vehicle_yaw = 0; // 0 means not available
 
         // Diluition of position measurements
         // Should smooth overtime from high value to low value
         // to simulate improved measurement accuracy over time.
         // TODO: Implement smoothing (Kalman filter?)
-        uint16_t eph = 0.3f // minimum HDOP 
-        uint16_t epv = 0.4f // minimum HDOP 
+        uint16_t eph = 0.3f; // minimum HDOP 
+        uint16_t epv = 0.4f; // minimum HDOP 
 
         this->get_lat_lon_alt((int32_t*)&lon_lat_alt);
         this->get_earth_fixed_velocity((int16_t*)gps_velocity_ned);
-        this->get_vehicle_yaw_wrt_earth_north(&yaw);
+        this->get_vehicle_yaw_wrt_earth_north(&vehicle_yaw);
         this->get_ground_speed((int16_t*)ground_speed);
         gps_ground_speed = sqrt(pow(ground_speed[0], 2) + pow(ground_speed[1], 2));
         

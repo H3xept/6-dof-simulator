@@ -57,7 +57,7 @@ class URL {
         int err = curl_easy_perform(curl);
         if (err) {
             fprintf(stderr, "Something went wrong while fetching %s\n", this->get_url().c_str());
-            return ""
+            return "";
         } else {
             return ss.str();
         }

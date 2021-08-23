@@ -195,8 +195,8 @@ Eigen::VectorXd& Drone::get_vector_dx_state() {
     return this->dx_state;
 }
 
-Eigen::VectorXd Drone::get_environment_wind() {
-    Eigen::VectorXd wind = Eigen::VectorXd::Zero(3);
+Eigen::Vector3d Drone::get_environment_wind() {
+    Eigen::Vector3d wind = Eigen::Vector3d::Zero(3);
     return wind;
 }
 
