@@ -77,8 +77,32 @@ protected:
         lat_lon_alt[2] = (int32_t)((d_lat_lon_alt[2] * 1000)); // m to mm
     }
     
+    /**
+     *  Simulation airspeed + opposite of velocity vector.
+     *  Windspeed should be acquired in [cm/s]
+     */
+    void get_true_wind_speed(uint16_t* wind_speed) { // <uint16_t(1)>
+        
+        int16_t ground_speed[3] = {0};
+        this->get_ground_speed((int16_t*)ground_speed);   
+
+        Eigen::VectorXd ground_speed_vec{3};
+        for (uint i = 0; i < sizeof(ground_speed) / sizeof(int16_t); i++)
+            ground_speed_vec[i] = ground_speed[i];
+
+        // Environment wind is assumed to be in m/s -- cm/s is required.
+        Eigen::VectorXd environment_wind = this->get_environment_wind() * 100; 
+        double wind_magnitude = (ground_speed_vec * -1).addTo(environment_wind).norm();
+        *wind_speed = (uint16_t)wind_magnitude;
+    }
+
 public:
     virtual uint64_t get_sim_time() = 0;
+    
+    // Environment wind in m/s
+    virtual Eigen::VectorXd get_environment_wind();
+    // Temperature in [degC]
+    virtual float get_temperature_reading();
 
     /**
      * Drone state as populated by the CAELUS_FDM package.
@@ -108,23 +132,19 @@ public:
         int16_t ground_speed[3] = {0};
         float f_acceleration[3] = {0};
         int16_t acceleration[3] = {0};
+        int16_t true_wind_speed = 0;
 
         this->get_attitude((float*)attitude);
         this->get_rpy_speed((float*)rpy_speed);
         this->get_lat_lon_alt((int32_t*)lat_lon_alt);
         this->get_ground_speed((int16_t*)ground_speed);
-
         this->get_body_frame_acceleration((float*)f_acceleration);
-        // m/s**2 to mG (milli Gs)
+        this->get_true_wind_speed(&true_wind_speed);
+
+        // (acc / G * 1000) => m/s**2 to mG (milli Gs)
         acceleration[0] = (int16_t)std::round((f_acceleration[0] / G_FORCE) * 1000);
         acceleration[1] = (int16_t)std::round((f_acceleration[1] / G_FORCE) * 1000);
         acceleration[2] = (int16_t)std::round((f_acceleration[2] / G_FORCE) * 1000);
-
-        // Vector3d airSpeed = new Vector3d(vehicle.getVelocity());
-        // airSpeed.scale(-1.0);
-        // airSpeed.add(vehicle.getWorld().getEnvironment().getCurrentWind(vehicle.position));
-        // float as_mag = (float) airSpeed.length();
-        // msg_hil_state.set("true_airspeed", (int)(as_mag * 100));
 
         mavlink_msg_hil_state_quaternion_pack(
             system_id,
@@ -141,8 +161,8 @@ public:
             ground_speed[0],
             ground_speed[1],
             ground_speed[2],
-            0,
-            0,
+            true_wind_speed,
+            true_wind_speed,
             acceleration[0],
             acceleration[1],
             acceleration[2]
@@ -185,11 +205,11 @@ public:
             magfield[1],
             magfield[2],
             abs_pressure,
-            0.0,
-            488.17853,
-            0,
-            4095,
-            0
+            diff_pressure,
+            lat_lon_alt[2], // Altitude (Should be noisy -- exact for now)
+            this->get_temperature_reading(),
+            4095, // Fields updated (all)
+            0 // ID
         );
 
         return msg;

@@ -194,3 +194,12 @@ Eigen::VectorXd& Drone::get_vector_state() {
 Eigen::VectorXd& Drone::get_vector_dx_state() {
     return this->dx_state;
 }
+
+Eigen::VectorXd Drone::get_environment_wind() {
+    Eigen::VectorXd wind = Eigen::VectorXd::Zero(3);
+    return wind;
+}
+
+float Drone::get_temperature_reading() {
+    return 25.0;
+}

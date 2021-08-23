@@ -80,6 +80,9 @@ public:
     void handle_mavlink_message(mavlink_message_t m) override;
 
     uint64_t get_sim_time() override;
+    Eigen::VectorXd get_environment_wind() override;
+    float get_temperature_reading() override;
+    
     Eigen::VectorXd& get_vector_state() override;
     Eigen::VectorXd& get_vector_dx_state() override;
 };
