@@ -67,7 +67,7 @@ protected:
         Eigen::VectorXd xyz_dot_body_frame = state.segment(3,3);
 
         Eigen::MatrixXd body_to_earth_rot = caelus_fdm::body2earth(state);
-        Eigen::VectorXd earth_frame_velocity = body_to_earth_rot * xyz_dot_body_frame.transpose();
+        Eigen::VectorXd earth_frame_velocity = body_to_earth_rot * xyz_dot_body_frame;
 
         for (uint i = 0; i < 3; i++) *(xyz+i) = earth_frame_velocity[i];
     }   
