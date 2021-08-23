@@ -2,6 +2,7 @@
 #define __DRONESTATE_H__
 
 #include "../Helpers/magnetic_field_lookup.h"
+#include "ConsoleLogger.h"
 #include <cmath>
 #include <boost/chrono.hpp>
 #include <Eigen/Eigen>
@@ -10,8 +11,8 @@
 
 class DroneStateEncoder {
 protected:
-
-    void euler_to_quaterions(const float* euler_rpy, float* quaternion) {
+    
+    static void euler_to_quaterions(const float* euler_rpy, float* quaternion) {
         float roll = euler_rpy[0];
         float pitch = euler_rpy[1];
         float yaw = euler_rpy[2];
@@ -20,11 +21,11 @@ protected:
         quaternion[2] = cos(roll/2) * cos(pitch/2) * sin(yaw/2) - sin(roll/2) * sin(pitch/2) * cos(yaw/2);
         quaternion[3] = cos(roll/2) * cos(pitch/2) * cos(yaw/2) + sin(roll/2) * sin(pitch/2) * sin(yaw/2);
     }
-
+    
     void get_attitude(float* attitude) { // <float(4)>
         Eigen::VectorXd& state = this->get_vector_state();
         const float* euler = (const float*) state.data() + 6;
-        this->euler_to_quaterions(euler, attitude);
+        DroneStateEncoder::euler_to_quaterions(euler, attitude);
     } 
 
     void get_rpy_speed(float* rpy) { // <float(3)>
@@ -60,6 +61,18 @@ protected:
         for (uint i = 0; i < 3; i++) *(x_y_z+i) = state[i];
     }
     
+    void get_earth_fixed_velocity(int16_t* xyz) { //<int16_t(3)>
+        
+        Eigen::VectorXd state = this->get_vector_state();
+        double xyz_dot_body_frame[3] = {0};
+        for (uint i = 0; i < 3; i++) *(xyz_dot_body_frame+i) = state[3 + i];
+
+        Eigen::MatrixXd body_to_earth_rot = caelus_fdm::body2earth(state);
+        Eigen::VectorXd earth_frame_velocity = body_to_earth_rot * xyz;
+
+        for (uint i = 0; i < 3; i++) *(xyz+i) = earth_frame_velocity[i];
+    }   
+
     /**
      * lat: [degE7]
      * lon: [degE7]
@@ -94,6 +107,32 @@ protected:
         Eigen::VectorXd environment_wind = this->get_environment_wind() * 100; 
         double wind_magnitude = (ground_speed_vec * -1).addTo(environment_wind).norm();
         *wind_speed = (uint16_t)wind_magnitude;
+    }
+
+    /**
+     * Vehicle course-over-ground in [cDeg]
+     */
+    void get_course_over_ground(uint16_t* cog) { // <uint16_t(1)>
+        Eigen::VectorXd state = this->get_vector_state();
+        float xyz_dot[3] = {0};
+        for (uint i = 0; i < 3; i++) *(xyz_dot+i) = state[i + 3];
+        // Maybe convert xyz to earth frame?
+        *cog = ((atan2(xyz_dot[0], xyz_dot[1]) * 180) / M_PI) * 100 // Deg => cDeg
+    }
+
+    /**
+     * Yaw of vehicle relative to Earth's North, zero means not available, use 36000 for north
+     * TODO: Make sure that the 6DOF does not spit out 0 for NORTH oriented vehicle
+     * (0 in PX4 represents no-yaw info)
+     * return yaw in [cDeg]
+     */
+    void get_vehicle_yaw_wrt_earth_north(uint16_t* yaw) { // <uint16_t(1)>
+        Eigen::VectorXd state = this->get_vector_state();
+        ConsoleLogger logger = ConsoleLogger::shared_instance();
+        *yaw = (uint16_t)std::round((((state[8]) * 180) / M_PI) * 100);
+        if (*yaw == 0) {
+            logger->debug_log("[Warning] YAW is ZERO -- PX4 will interpret this as no-yaw!");
+        }
     }
 
 public:
@@ -180,7 +219,7 @@ public:
         float magfield[3] = {0}; // gauss
         float abs_pressure = 1033.0; // hPa // Random value from (http://www.isleofskyeweather.co.uk/wxbarosummary.php)
         float diff_pressure = abs_pressure;
-        float pressure_alt = 100; // Fixed value
+
         float temperature = 25; // degC
 
         this->get_body_frame_acceleration((float*)body_frame_acc);
@@ -219,22 +258,35 @@ public:
         mavlink_message_t msg;
         
         // DegE7, DegE7, mm
-        float lon_lat_alt[3] = {0};
+        int32_t lon_lat_alt[3] = {0};
         // Earth-fixed NED frame (cm/s)
-        uint16_t gps_ground_speed = UINT16_MAX; // uint16 max for not available
-        // cm/s
+        uint16_t ground_speed[3] = {0};
+        // Scalar horizontal speed (sqrt(vel.x**2, vel.y**2)) (see below)
+        uint16_t gps_ground_speed = 0;
+        // cm/s in NED earth fixed frame
         int16_t gps_velocity_ned[3] = {0};
         // Course Over Ground is the actual direction of progress of a vessel, 
         // between two points, with respect to the surface of the earth.
-        uint16_t course_over_ground = 20; // 0.0..359.99 degrees // cdeg
+        uint16_t course_over_ground = 0; // 0.0..359.99 degrees // cdeg
         // number of visible satellites
         uint8_t sat_visible = UINT8_MAX;
-        // Relative to earth's north
+        // Vehicle yaw relative to earth's north
+        // Yaw of vehicle relative to Earth's North, zero means not available, use 36000 for north
         uint8_t vehicle_yaw = 0; // 0 means not available
 
+        // Diluition of position measurements
+        // Should smooth overtime from high value to low value
+        // to simulate improved measurement accuracy over time.
+        // TODO: Implement smoothing (Kalman filter?)
+        uint16_t eph = 0.3f // minimum HDOP 
+        uint16_t epv = 0.4f // minimum HDOP 
 
-        // this->get_lat_lon_alt((float*)&lon_lat_alt);
-
+        this->get_lat_lon_alt((int32_t*)&lon_lat_alt);
+        this->get_earth_fixed_velocity((int16_t*)gps_velocity_ned);
+        this->get_vehicle_yaw_wrt_earth_north(&yaw);
+        this->get_ground_speed((int16_t*)ground_speed);
+        gps_ground_speed = sqrt(pow(ground_speed[0], 2) + pow(ground_speed[1], 2));
+        
         mavlink_msg_hil_gps_pack(
             system_id,
             component_id,
@@ -244,15 +296,15 @@ public:
             lon_lat_alt[1],
             lon_lat_alt[0],
             lon_lat_alt[2],
-            UINT16_MAX,
-            UINT16_MAX,
+            eph,
+            epv,
             gps_ground_speed,
             gps_velocity_ned[0],
             gps_velocity_ned[1],
             gps_velocity_ned[2],
             course_over_ground,
             sat_visible,
-            0,
+            0, // ID
             vehicle_yaw
         );
 
