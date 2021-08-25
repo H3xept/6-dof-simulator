@@ -14,15 +14,15 @@
 #define SIMULATION_RESUMED "Simulation resumed."
 
 struct SimulatorConfig {
-    boost::chrono::microseconds timestep_ms;
+    boost::chrono::microseconds timestep_us;
     double max_speed_multiplier;
     bool running_lockstep;
 
-    SimulatorConfig(long timestep_ms, double max_speed_multiplier, bool running_lockstep) :
-        timestep_ms(timestep_ms),
+    SimulatorConfig(long timestep_us, double max_speed_multiplier, bool running_lockstep) :
+        timestep_us(timestep_us),
         max_speed_multiplier(max_speed_multiplier),
         running_lockstep(running_lockstep) {
-            printf("Simulator has timestep of %ld (%lld)\n", timestep_ms, this->timestep_ms.count());
+            printf("Simulator has timestep of %ld (%lld)\n", timestep_us, this->timestep_us.count());
         };
 };
 

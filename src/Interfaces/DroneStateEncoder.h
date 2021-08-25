@@ -24,13 +24,14 @@ protected:
     
     void get_attitude(float* attitude) { // <float(4)>
         Eigen::VectorXd& state = this->get_vector_state();
-        const float* euler = (const float*) state.data() + 6;
-        DroneStateEncoder::euler_to_quaterions(euler, attitude);
+        float euler[3] = {0};
+        for (uint i = 0; i < 3; i++) euler[i] = state[6+i];
+        DroneStateEncoder::euler_to_quaterions((const float*)euler, attitude);
     } 
 
     void get_rpy_speed(float* rpy) { // <float(3)>
         Eigen::VectorXd state = this->get_vector_state();
-        for (uint i = 0; i < 3; i++) *(rpy+i) = state[i + 6];
+        for (uint i = 0; i < 3; i++) *(rpy+i) = state[i + 9];
     } 
     
     /**
@@ -84,8 +85,8 @@ protected:
         Eigen::VectorXd state = this->get_vector_state();
         double d_lat_lon_alt[3] = {0};
         caelus_fdm::convertState2LlA(INITIAL_LAT, INITIAL_LON, state, d_lat_lon_alt[0], d_lat_lon_alt[1], d_lat_lon_alt[2]);
-        lat_lon_alt[0] = (int32_t)(d_lat_lon_alt[0]);
-        lat_lon_alt[1] = (int32_t)(d_lat_lon_alt[1]);
+        lat_lon_alt[0] = (int32_t)(d_lat_lon_alt[0] * 1.e7);
+        lat_lon_alt[1] = (int32_t)(d_lat_lon_alt[1] * 1.e7);
         lat_lon_alt[2] = (int32_t)((d_lat_lon_alt[2] * 1000)); // m to mm
     }
     
@@ -130,8 +131,11 @@ protected:
         Eigen::VectorXd state = this->get_vector_state();
         ConsoleLogger* logger = ConsoleLogger::shared_instance();
         *yaw = (uint16_t)std::round((((state[8]) * 180) / M_PI) * 100);
+
         if (*yaw == 0) {
-            logger->debug_log("[Warning] YAW is ZERO -- PX4 will interpret this as no-yaw!");
+            // logger->debug_log("[Warning] YAW is ZERO -- PX4 will interpret this as no-yaw!");
+            // logger->debug_log("[Warning] Setting yaw to 1°...");
+            *yaw += 1;
         }
     }
 
@@ -184,6 +188,14 @@ public:
         acceleration[1] = (int16_t)std::round((f_acceleration[1] / G_FORCE) * 1000);
         acceleration[2] = (int16_t)std::round((f_acceleration[2] / G_FORCE) * 1000);
 
+        // printf("HIL STATE QUATERNION\n");
+        // printf("Attitude: %f %f %f %f \n", attitude[0], attitude[1], attitude[2], attitude[3]);
+        // printf("RPY Speed: %f %f %f \n", rpy_speed[0], rpy_speed[1], rpy_speed[2]);
+        // printf("Lat Lon Alt: %d %d %d \n", lat_lon_alt[0], lat_lon_alt[1], lat_lon_alt[2]);
+        // printf("Ground speed: %d %d %d \n", ground_speed[0], ground_speed[1], ground_speed[2]);
+        // printf("Acceleration: %d %d %d \n", acceleration[0], acceleration[1], acceleration[2]);
+        printf("True wind speed: %d \n", true_wind_speed);
+
         mavlink_msg_hil_state_quaternion_pack(
             system_id,
             component_id,
@@ -209,6 +221,20 @@ public:
         return msg;
     }
 
+    // mavlink_message_t hil_optical_flow_msg(uint8_t system_id, uint8_t component_id) {
+    //     mavlink_message_t msg;
+
+    //     mavlink_msg_hil_optical_flow_pack(
+    //         system_id,
+    //         component_id,
+    //         &msg,
+    //         this->get_sim_time(),
+
+    //     )
+
+    //     return msg;
+    // }
+
     mavlink_message_t hil_sensor_msg(uint8_t system_id, uint8_t component_id) {
         mavlink_message_t msg;
         
@@ -219,14 +245,17 @@ public:
         float abs_pressure = 1033.0; // hPa // Random value from (http://www.isleofskyeweather.co.uk/wxbarosummary.php)
         float diff_pressure = abs_pressure;
 
-        float temperature = 25; // degC
-
         this->get_body_frame_acceleration((float*)body_frame_acc);
         this->get_rpy_speed((float*) gyro_xyz);
         this->get_lat_lon_alt((int32_t*)lat_lon_alt);
 
-        Eigen::VectorXd mag_field_vec = magnetic_field_for_latlonalt((int32_t*)lat_lon_alt);
+        Eigen::VectorXd mag_field_vec = magnetic_field_for_latlonalt((const int32_t*)lat_lon_alt);
         for (int i = 0; i < mag_field_vec.size(); i++) magfield[i] = mag_field_vec[i];
+
+        // printf("GYRO xyz: %f %f %f \n", gyro_xyz[0], gyro_xyz[1], gyro_xyz[2]);
+        // printf("Lat Lon Alt: %d %d %d \n", lat_lon_alt[0], lat_lon_alt[1], lat_lon_alt[2]);
+        // printf("Magfield: %f %f %f \n", magfield[0], magfield[1], magfield[2]);
+        // printf("Body frame Acceleration: %f %f %f \n", body_frame_acc[0], body_frame_acc[1], body_frame_acc[2]);
 
         mavlink_msg_hil_sensor_pack(
             system_id,
@@ -246,7 +275,7 @@ public:
             diff_pressure,
             lat_lon_alt[2], // Altitude (Should be noisy -- exact for now)
             this->get_temperature_reading(),
-            4095, // Fields updated (all)
+            7167, // Fields updated (all)
             0 // ID
         );
 
@@ -277,8 +306,8 @@ public:
         // Should smooth overtime from high value to low value
         // to simulate improved measurement accuracy over time.
         // TODO: Implement smoothing (Kalman filter?)
-        uint16_t eph = 0.3f; // minimum HDOP 
-        uint16_t epv = 0.4f; // minimum HDOP 
+        uint16_t eph = 0.3f * 100; // minimum HDOP 
+        uint16_t epv = 0.4f * 100; // minimum HDOP 
 
         this->get_lat_lon_alt((int32_t*)&lon_lat_alt);
         this->get_earth_fixed_velocity((int16_t*)gps_velocity_ned);
@@ -286,6 +315,11 @@ public:
         this->get_ground_speed((int16_t*)ground_speed);
         gps_ground_speed = sqrt(pow(ground_speed[0], 2) + pow(ground_speed[1], 2));
         
+        // printf("GPS SENSOR\n");
+        // printf("Lon Lat Alt: %d %d %d \n", lon_lat_alt[0], lon_lat_alt[1], lon_lat_alt[2]);
+        // printf("Ground speed: %d %d %d \n", ground_speed[0], ground_speed[1], ground_speed[2]);
+        // printf("gps_velocity_ned: %d %d %d \n", gps_velocity_ned[0], gps_velocity_ned[1], gps_velocity_ned[2]);
+
         mavlink_msg_hil_gps_pack(
             system_id,
             component_id,

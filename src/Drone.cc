@@ -36,7 +36,7 @@ Drone::Drone(char* config_file, MAVLinkMessageRelay& connection) :
         } 
         // This is a hack, please check with Gianluca what's going on.
         // If state[3] is initialised to 0 the ODE solver populates the state with nan(s).
-        this->state[2] = 0; this->state[3] = 28; 
+        this->state[2] = 0; this->state[3] = 0.1; 
     }
 
 void Drone::_setup_drone() {
@@ -50,8 +50,8 @@ void Drone::_setup_drone() {
 void Drone::update(boost::chrono::microseconds us) {
     MAVLinkSystem::update(us);
     this->_process_mavlink_messages();
-    this->_publish_state();
     this->_step_dynamics(us);
+    this->_publish_state();
 }
 
 void Drone::_step_dynamics(boost::chrono::microseconds us) {
@@ -65,9 +65,10 @@ void Drone::_step_dynamics(boost::chrono::microseconds us) {
         ,
         this->state,
         this->get_sim_time() / 1000, // to ms
-        0.01// us.count() / 1000 // to ms
+        us.count() / 1000000.0 // us to sec
     );
     this->time += us;
+    // printf("Time elapsed %llu\n", boost::chrono::duration_cast<boost::chrono::seconds>(this->time).count());
 }
 
 MAVLinkMessageRelay& Drone::get_mavlink_message_relay() {
@@ -98,7 +99,6 @@ void Drone::_publish_hil_state_quaternion() {
 void Drone::_publish_state() {
     if (!this->connection.connection_open()) return;
 
-    this->last_autopilot_telemetry = this->time;
     this->_publish_hil_gps();
     this->_publish_hil_sensor();
     this->_publish_system_time();
@@ -106,8 +106,11 @@ void Drone::_publish_state() {
     bool should_send_autopilot_telemetry = 
         (this->time - this->last_autopilot_telemetry).count()
         > this->hil_state_quaternion_message_frequency;
-
+    
     if (!should_send_autopilot_telemetry) return;
+    
+    this->last_autopilot_telemetry = this->time;
+    
     this->_publish_hil_state_quaternion();
 }
 
@@ -124,8 +127,8 @@ void Drone::_process_command_long_message(mavlink_message_t m) {
     
     switch(command_id) {
         case MAV_CMD_SET_MESSAGE_INTERVAL:
-            printf("Simulator -> PX4 message interval now set to %f (us?)\n", command.param2);
-            this->hil_state_quaternion_message_frequency = command.param1;
+            printf("Simulator -> PX4 message interval now set to %f (us)\n", command.param2);
+            this->hil_state_quaternion_message_frequency = command.param2;
             break;
         default:
             fprintf(stdout, "Unknown command id from command long (%d)", command_id);
@@ -140,6 +143,7 @@ void Drone::_process_hil_actuator_controls(mavlink_message_t m) {
     mavlink_hil_actuator_controls_t controls;
     mavlink_msg_hil_actuator_controls_decode(&m, &controls);
     this->armed = (controls.mode & MAV_MODE_FLAG_SAFETY_ARMED) > 0;
+    this->mav_mode = controls.mode;
     
     Eigen::VectorXd vtol_prop_controls{4};
     for (int i = 0; i < 4; i++) vtol_prop_controls[i] = controls.controls[i];
@@ -147,7 +151,8 @@ void Drone::_process_hil_actuator_controls(mavlink_message_t m) {
     for (int i = 0; i < 2; i++) ailerons_controls[i] = controls.controls[4+i];
     Eigen::VectorXd propeller_controls{1};
     for (int i = 0; i < 1; i++) propeller_controls[i] = controls.controls[8+i];
-
+    
+    // printf("VTOL PROPS: %f %f %f %f\n", vtol_prop_controls[0], vtol_prop_controls[1], vtol_prop_controls[2], vtol_prop_controls[3]);
     this->propellers.set_control(propeller_controls);
     this->propellers.set_control(ailerons_controls);
 }
@@ -202,4 +207,8 @@ Eigen::Vector3d Drone::get_environment_wind() {
 
 float Drone::get_temperature_reading() {
     return 25.0;
+}
+
+uint8_t Drone::get_mav_mode() {
+    return this->mav_mode;
 }

@@ -33,8 +33,10 @@ size_t MAVLinkConnectionHandler::send_data(const void* buff, size_t len) {
 }
 
 bool MAVLinkConnectionHandler::received_message(mavlink_message_t m) {
-    for (auto h : this->message_handlers) 
+    for (auto h : this->message_handlers) {
         h->handle_mavlink_message(m);
+    }
+        
 }
 
 void MAVLinkConnectionHandler::enqueue_message(const mavlink_message_t m) {

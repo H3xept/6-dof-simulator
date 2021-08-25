@@ -1,5 +1,6 @@
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
+#include "../Logging/ConsoleLogger.h"
 #include "http_req.h"
 #include "magnetic_field_lookup.h"
 
@@ -25,7 +26,7 @@ std::vector<double> parse_doubles_in_line(std::string s) {
 }
 
 Eigen::VectorXd parse_response_to_vector(std::string s) {
-    
+
     std::vector<std::string> lines;
     boost::split(lines, s, [](char c){return c == '\n';});
     // Last line of the canonical response from MAG_LOOKUP_ENDPOINT
@@ -41,12 +42,19 @@ Eigen::VectorXd parse_response_to_vector(std::string s) {
 static Eigen::VectorXd cached_magfield = Eigen::VectorXd::Zero(3);
 
 Eigen::VectorXd magnetic_field_for_latlonalt(const int32_t* lat_lon_alt) {
-    if (cached_magfield.isZero()) {
-        URL u(boost::str((boost::format(MAG_LOOKUP_ENDPOINT) % 
-                lat_lon_alt[0] %
-                lat_lon_alt[1] %
-                (lat_lon_alt[2] / 1000) // m to km
-            )));
-        cached_magfield = parse_response_to_vector(u.get_body());
-    } return cached_magfield;
+    printf("Lat lon alt: %d %d %d\n", lat_lon_alt[0], lat_lon_alt[1], lat_lon_alt[2]);
+    try {
+        if (cached_magfield.isZero()) {
+            URL u(boost::str((boost::format(MAG_LOOKUP_ENDPOINT) % 
+                    (lat_lon_alt[0] / 1.e7) % // LatLon are converted to int form by multiplying by 1.e7 in DroneStateEncode 
+                    (lat_lon_alt[1] / 1.e7) % // ^^^^^^^^^^ This is a re-normalization to decimal form
+                    ((lat_lon_alt[2] / 1000) / 1000) // mm to km
+                )));
+            cached_magfield = parse_response_to_vector(u.get_body());
+        } return cached_magfield;
+    } catch(const std::exception& e) {
+        ConsoleLogger* logger = ConsoleLogger::shared_instance();
+        logger->debug_log("Error in magnetic_field_for_latlonalt");
+        fprintf(stderr, "%s\n", e.what());
+    }
 }

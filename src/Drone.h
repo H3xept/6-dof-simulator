@@ -30,10 +30,11 @@ class Drone : public DynamicObject,
               public MAVLinkMessageHandler,
               public DroneStateEncoder {
 private:
-    
+
+    uint8_t mav_mode = MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
     boost::chrono::microseconds time{0};
     boost::chrono::microseconds last_autopilot_telemetry{0};
-    uint16_t hil_state_quaternion_message_frequency = 1000; // Default frequency of 1s
+    uint16_t hil_state_quaternion_message_frequency = 1000000; // Default frequency of 1s
 
     bool armed = false;
 
@@ -82,6 +83,7 @@ public:
     uint64_t get_sim_time() override;
     Eigen::Vector3d get_environment_wind() override;
     float get_temperature_reading() override;
+    uint8_t get_mav_mode() override;
 
     Eigen::VectorXd& get_vector_state() override;
     Eigen::VectorXd& get_vector_dx_state() override;
