@@ -31,6 +31,10 @@ class Drone : public DynamicObject,
               public DroneStateEncoder {
 private:
 
+    // Lockstep fix
+    bool should_reply_lockstep = false;
+    uint32_t hil_actuator_controls_msg_n = 0;
+
     uint8_t mav_mode = MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
     boost::chrono::microseconds time{0};
     boost::chrono::microseconds last_autopilot_telemetry{0};
@@ -61,7 +65,7 @@ private:
     void _publish_hil_gps();
     void _publish_hil_state_quaternion();
     void _publish_hil_sensor();
-    void _publish_state();
+    void _publish_state(boost::chrono::microseconds dt);
     void _publish_system_time();
     
     void _step_dynamics(boost::chrono::microseconds us);

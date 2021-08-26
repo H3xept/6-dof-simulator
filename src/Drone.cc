@@ -51,7 +51,7 @@ void Drone::update(boost::chrono::microseconds us) {
     MAVLinkSystem::update(us);
     this->_process_mavlink_messages();
     this->_step_dynamics(us);
-    this->_publish_state();
+    this->_publish_state(us);
 }
 
 void Drone::_step_dynamics(boost::chrono::microseconds us) {
@@ -67,7 +67,6 @@ void Drone::_step_dynamics(boost::chrono::microseconds us) {
         this->get_sim_time() / 1000, // to ms
         us.count() / 1000000.0 // us to sec
     );
-    this->time += us;
     // printf("Time elapsed %llu\n", boost::chrono::duration_cast<boost::chrono::seconds>(this->time).count());
 }
 
@@ -96,12 +95,19 @@ void Drone::_publish_hil_state_quaternion() {
     this->connection.enqueue_message(msg);
 }
 
-void Drone::_publish_state() {
+void Drone::_publish_state(boost::chrono::microseconds us)
+ {
     if (!this->connection.connection_open()) return;
 
-    this->_publish_hil_gps();
-    this->_publish_hil_sensor();
-    this->_publish_system_time();
+    if (this->should_reply_lockstep || this->hil_actuator_controls_msg_n < 300) {
+        printf("Publishing STATE %lld \n", this->get_sim_time());
+        this->time += us;
+        this->_publish_hil_gps();
+        this->_publish_hil_sensor();
+        this->_publish_system_time();
+        this->should_reply_lockstep = false;
+    }
+
 
     bool should_send_autopilot_telemetry = 
         (this->time - this->last_autopilot_telemetry).count()
@@ -140,6 +146,9 @@ void Drone::_process_command_long_message(mavlink_message_t m) {
 
 void Drone::_process_hil_actuator_controls(mavlink_message_t m) {
     
+    this->should_reply_lockstep = true;
+    this->hil_actuator_controls_msg_n++;
+
     mavlink_hil_actuator_controls_t controls;
     mavlink_msg_hil_actuator_controls_decode(&m, &controls);
     this->armed = (controls.mode & MAV_MODE_FLAG_SAFETY_ARMED) > 0;
@@ -165,6 +174,7 @@ void Drone::_process_mavlink_message(mavlink_message_t m) {
             break;
         case MAVLINK_MSG_ID_HIL_ACTUATOR_CONTROLS:
             logger->debug_log("MSG: HIL_ACTUATOR_CONTROLS");
+            printf("-> %llu\n", this->get_sim_time());
             this->_process_hil_actuator_controls(m);
             break;
         case MAVLINK_MSG_ID_COMMAND_LONG:

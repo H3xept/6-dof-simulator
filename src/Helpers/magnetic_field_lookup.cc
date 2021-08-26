@@ -42,7 +42,7 @@ Eigen::VectorXd parse_response_to_vector(std::string s) {
 static Eigen::VectorXd cached_magfield = Eigen::VectorXd::Zero(3);
 
 Eigen::VectorXd magnetic_field_for_latlonalt(const int32_t* lat_lon_alt) {
-    printf("Lat lon alt: %d %d %d\n", lat_lon_alt[0], lat_lon_alt[1], lat_lon_alt[2]);
+    // printf("Lat lon alt: %d %d %d\n", lat_lon_alt[0], lat_lon_alt[1], lat_lon_alt[2]);
     try {
         if (cached_magfield.isZero()) {
             URL u(boost::str((boost::format(MAG_LOOKUP_ENDPOINT) % 

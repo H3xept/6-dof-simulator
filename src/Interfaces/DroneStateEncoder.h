@@ -194,7 +194,7 @@ public:
         // printf("Lat Lon Alt: %d %d %d \n", lat_lon_alt[0], lat_lon_alt[1], lat_lon_alt[2]);
         // printf("Ground speed: %d %d %d \n", ground_speed[0], ground_speed[1], ground_speed[2]);
         // printf("Acceleration: %d %d %d \n", acceleration[0], acceleration[1], acceleration[2]);
-        printf("True wind speed: %d \n", true_wind_speed);
+        // printf("True wind speed: %d \n", true_wind_speed);
 
         mavlink_msg_hil_state_quaternion_pack(
             system_id,
@@ -202,7 +202,7 @@ public:
             &msg,
             this->get_sim_time(),
             (float*)attitude,
-            rpy_speed[0],
+            rpy_speed[0], 
             rpy_speed[1],
             rpy_speed[2],
             lat_lon_alt[0],
@@ -220,20 +220,6 @@ public:
 
         return msg;
     }
-
-    // mavlink_message_t hil_optical_flow_msg(uint8_t system_id, uint8_t component_id) {
-    //     mavlink_message_t msg;
-
-    //     mavlink_msg_hil_optical_flow_pack(
-    //         system_id,
-    //         component_id,
-    //         &msg,
-    //         this->get_sim_time(),
-
-    //     )
-
-    //     return msg;
-    // }
 
     mavlink_message_t hil_sensor_msg(uint8_t system_id, uint8_t component_id) {
         mavlink_message_t msg;
