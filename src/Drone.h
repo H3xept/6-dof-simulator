@@ -9,12 +9,11 @@
 #include <chrono>
 #include <boost/numeric/odeint.hpp>
 #include <boost/lockfree/queue.hpp>
-#include <EquationsOfMotion/FixedWingEOM.h>
 #include "Containers/DroneConfig.h"
 #include "Interfaces/DynamicObject.h"
 #include "Interfaces/MAVLinkSystem.h"
 #include "Interfaces/Alive.h"
-#include "ClassExtensions/FixedWingEOM_Extension.h"
+#include "ClassExtensions/MixedEOM_Extension.h"
 #include "Interfaces/MAVLinkMessageRelay.h"
 #include "Interfaces/MAVLinkMessageHandler.h"
 #include "Interfaces/DroneStateEncoder.h"
@@ -42,14 +41,15 @@ private:
 
     bool armed = false;
 
-    Propellers propellers;
+    Propellers thrust_propellers{1};
+    Propellers vtol_propellers{4};
     Ailerons ailerons;
 
     DroneConfig config;
 
     Eigen::VectorXd state;
     Eigen::VectorXd dx_state;
-    FixedWingEOM dynamics;
+    MixedEOM dynamics;
     ODESolver dynamics_solver;
 
     MAVLinkMessageRelay& connection;

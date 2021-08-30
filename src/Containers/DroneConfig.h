@@ -26,6 +26,8 @@
  */
 struct DroneConfig : public PrettyPrintable {
     double mass; // kg
+    double b; // thrust factor (QuadrotorEOM)
+    double l; // Distance rotor from com [m]
     double b_prop; // thrust coefficient
     double d; // drag factor
     double c; // ? 
@@ -35,7 +37,7 @@ struct DroneConfig : public PrettyPrintable {
     MatrixXd J; // Inertial matrix
     
     friend std::istream &operator>>(std::istream &i, DroneConfig& dc) {
-        i >> dc.mass >> dc.b_prop >> dc.d >> dc.c >> dc.S >> dc.b_aero;
+        i >> dc.mass >> dc.b >> dc.l >> dc.b_prop >> dc.d >> dc.c >> dc.S >> dc.b_aero;
         // Aero Data
         i >> dc.drone_aero_config;
         // Inertial Matrix

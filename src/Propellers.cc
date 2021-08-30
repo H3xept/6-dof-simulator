@@ -1,8 +1,8 @@
 #include "Propellers.h"
 #include <math.h>
 
-Propellers::Propellers() {
-    for (int i = 0; i < PROP_N; i++) this->_last_control[i] = 0;
+Propellers::Propellers(uint8_t propeller_n) : propeller_n(propeller_n) {
+    for (int i = 0; i < this->propeller_n; i++) this->_last_control[i] = 0;
 }
 
 Eigen::VectorXd Propellers::control(double dt) {

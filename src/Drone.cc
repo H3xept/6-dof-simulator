@@ -36,15 +36,17 @@ Drone::Drone(char* config_file, MAVLinkMessageRelay& connection) :
         } 
         // This is a hack, please check with Gianluca what's going on.
         // If state[3] is initialised to 0 the ODE solver populates the state with nan(s).
-        this->state[2] = 0; this->state[3] = 0.1; 
+        this->state[2] = 0; this->state[3] = 0.0001; 
     }
 
 void Drone::_setup_drone() {
     // Inject controllers into dynamics model
     this->dynamics.setController([this] (double dt) -> Eigen::VectorXd
-        { return this->propellers.control(dt); });
+        { return this->thrust_propellers.control(dt); });
     this->dynamics.setControllerAero([this] (double dt) -> Eigen::VectorXd
         { return this->ailerons.control(dt); });
+    this->dynamics.setControllerVTOL([this] (double dt) -> Eigen::VectorXd
+        { return this->vtol_propellers.control(dt); });
 }
 
 void Drone::update(boost::chrono::microseconds us) {
@@ -67,7 +69,6 @@ void Drone::_step_dynamics(boost::chrono::microseconds us) {
         this->get_sim_time() / 1000, // to ms
         us.count() / 1000000.0 // us to sec
     );
-    // printf("Time elapsed %llu\n", boost::chrono::duration_cast<boost::chrono::seconds>(this->time).count());
 }
 
 MAVLinkMessageRelay& Drone::get_mavlink_message_relay() {
@@ -100,7 +101,7 @@ void Drone::_publish_state(boost::chrono::microseconds us)
     if (!this->connection.connection_open()) return;
 
     if (this->should_reply_lockstep || this->hil_actuator_controls_msg_n < 300) {
-        printf("Publishing STATE %lld \n", this->get_sim_time());
+        // TODO: move time computation up a layer
         this->time += us;
         this->_publish_hil_gps();
         this->_publish_hil_sensor();
@@ -158,12 +159,13 @@ void Drone::_process_hil_actuator_controls(mavlink_message_t m) {
     for (int i = 0; i < 4; i++) vtol_prop_controls[i] = controls.controls[i];
     Eigen::VectorXd ailerons_controls{2};
     for (int i = 0; i < 2; i++) ailerons_controls[i] = controls.controls[4+i];
-    Eigen::VectorXd propeller_controls{1};
-    for (int i = 0; i < 1; i++) propeller_controls[i] = controls.controls[8+i];
+    Eigen::VectorXd thrust_propeller_controls{1};
+    for (int i = 0; i < 1; i++) thrust_propeller_controls[i] = controls.controls[8+i];
     
     // printf("VTOL PROPS: %f %f %f %f\n", vtol_prop_controls[0], vtol_prop_controls[1], vtol_prop_controls[2], vtol_prop_controls[3]);
-    this->propellers.set_control(propeller_controls);
-    this->propellers.set_control(ailerons_controls);
+    this->thrust_propellers.set_control(thrust_propeller_controls);
+    this->ailerons.set_control(ailerons_controls);
+    // TODO: add vtol propellers
 }
 
 void Drone::_process_mavlink_message(mavlink_message_t m) {
