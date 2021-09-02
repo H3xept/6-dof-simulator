@@ -34,7 +34,7 @@ private:
     bool should_reply_lockstep = false;
     uint32_t hil_actuator_controls_msg_n = 0;
 
-    uint8_t mav_mode = MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
+    uint8_t mav_mode = 0;
     boost::chrono::microseconds time{0};
     boost::chrono::microseconds last_autopilot_telemetry{0};
     uint16_t hil_state_quaternion_message_frequency = 1000000; // Default frequency of 1s

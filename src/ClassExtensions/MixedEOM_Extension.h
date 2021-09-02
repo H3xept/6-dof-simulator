@@ -21,6 +21,9 @@ public:
         9.81
     ) {}
 
+    bool get_airborne_status() {
+        return this->is_airborne;
+    }
 };
 
 #endif // __MIXEDEOM_EXTENSION_H__

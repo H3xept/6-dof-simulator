@@ -9,9 +9,38 @@
 #include <mavlink.h>
 #include <EquationsOfMotion/rotationMatrix.h>
 
+// #define HIL_STATE_QUATERNION_VERBOSE
+// #define HIL_SENSOR_VERBOSE
+// #define HIL_GPS_VERBOSE
+
 class DroneStateEncoder {
 protected:
-    
+
+#define K_Pb 101325.0  // static pressure at sea level [Pa]
+#define K_Tb 288.15    // standard temperature at sea level [K]
+#define K_Lb -0.0065   // standard temperature lapse rate [K/m]
+#define K_M 0.0289644  // molar mass of Earth's air [kg/mol]
+#define K_G 9.80665    // gravity
+#define K_R 8.31432    // universal gas constant
+
+    // Ripped from JMavSim
+    /**
+     * Convert altitude to barometric pressure
+     * @param alt        Altitude in meters
+     * @return Barometric pressure in Pa
+     */
+    static double alt_to_baro(double alt) {
+        if (alt <= 11000.0) {
+            return K_Pb * std::pow(K_Tb / (K_Tb + (K_Lb * alt)), (K_G * K_M) / (K_R * K_Lb));
+        } else if (alt <= 20000.0) {
+            double f = 11000.0;
+            double a = alt_to_baro(f);
+            double c = K_Tb + (f * K_Lb);
+            return a * std::pow(M_E, ((-K_G) * K_M * (alt - f)) / (K_R * c));
+        }
+        return 0.0;
+    }
+
     static void euler_to_quaterions(const float* euler_rpy, float* quaternion) {
         float roll = euler_rpy[0];
         float pitch = euler_rpy[1];
@@ -52,6 +81,9 @@ protected:
 #define G_FORCE 9.81
         Eigen::VectorXd state_derivative = this->get_vector_dx_state();
         for (uint i = 0; i < 3; i++) *(x_y_z+i) = state_derivative[3 + i];
+        if (x_y_z[2] == 0) { // FIX FOR FAKE GROUND IN 6DOF
+            x_y_z[2] = (float)-G_FORCE;
+        }
     } 
 
     /**
@@ -84,7 +116,7 @@ protected:
 #define INITIAL_LON -7.5571598
         Eigen::VectorXd state = this->get_vector_state();
         double d_lat_lon_alt[3] = {0};
-        caelus_fdm::convertState2LlA(INITIAL_LAT, INITIAL_LON, state, d_lat_lon_alt[0], d_lat_lon_alt[1], d_lat_lon_alt[2]);
+        //caelus_fdm::convertState2LlA(INITIAL_LAT, INITIAL_LON, state, d_lat_lon_alt[0], d_lat_lon_alt[1], d_lat_lon_alt[2]);
         lat_lon_alt[0] = (int32_t)(d_lat_lon_alt[0] * 1.e7);
         lat_lon_alt[1] = (int32_t)(d_lat_lon_alt[1] * 1.e7);
         lat_lon_alt[2] = (int32_t)((d_lat_lon_alt[2] * 1000)); // m to mm
@@ -151,8 +183,8 @@ public:
      * <
      *  x , y , z    [0:3]  body-frame origin with respect to earth-frame (NED m)
      *  ẋ , ẏ , ż    [3:6]  body-frame velocity (m/s)
-     *  ɸ , θ , ѱ    [6:9]  (roll, pitch, yaw) body-frame orientation with respect to earth-frame (rad/s)
-     *  ɸ. , θ. , ѱ. [9:12] (roll., pitch., yaw.) body-frame orientation velocity (rad/s**2)
+     *  ɸ , θ , ѱ    [6:9]  (roll, pitch, yaw) body-frame orientation with respect to earth-frame (rad)
+     *  ɸ. , θ. , ѱ. [9:12] (roll., pitch., yaw.) body-frame orientation velocity (rad/s)
      * >
      */
     virtual Eigen::VectorXd& get_vector_state() = 0;
@@ -188,13 +220,22 @@ public:
         acceleration[1] = (int16_t)std::round((f_acceleration[1] / G_FORCE) * 1000);
         acceleration[2] = (int16_t)std::round((f_acceleration[2] / G_FORCE) * 1000);
 
-        // printf("HIL STATE QUATERNION\n");
-        // printf("Attitude: %f %f %f %f \n", attitude[0], attitude[1], attitude[2], attitude[3]);
-        // printf("RPY Speed: %f %f %f \n", rpy_speed[0], rpy_speed[1], rpy_speed[2]);
-        // printf("Lat Lon Alt: %d %d %d \n", lat_lon_alt[0], lat_lon_alt[1], lat_lon_alt[2]);
-        // printf("Ground speed: %d %d %d \n", ground_speed[0], ground_speed[1], ground_speed[2]);
-        // printf("Acceleration: %d %d %d \n", acceleration[0], acceleration[1], acceleration[2]);
-        // printf("True wind speed: %d \n", true_wind_speed);
+#ifdef HIL_STATE_QUATERNION_VERBOSE
+        Eigen::VectorXd& state = this->get_vector_state();
+        float attitude_euler[3] = {0};
+        for (uint i = 0; i < 3; i++) attitude_euler[i] = state[6+i];
+
+        printf("[HIL STATE QUATERNION]\n");
+        printf("Attitude quaternion: %f %f %f %f \n", attitude[0], attitude[1], attitude[2], attitude[3]);
+        printf("Attitude euler: roll: %f pitch: %f yaw: %f \n", attitude_euler[0], attitude_euler[1], attitude_euler[2]);
+        printf("RPY Speed: %f %f %f \n", rpy_speed[0], rpy_speed[1], rpy_speed[2]);
+        printf("Lat Lon Alt: %d %d %d \n", lat_lon_alt[0], lat_lon_alt[1], lat_lon_alt[2]);
+        printf("Ground speed: %d %d %d \n", ground_speed[0], ground_speed[1], ground_speed[2]);
+        printf("Acceleration: %d %d %d \n", acceleration[0], acceleration[1], acceleration[2]);
+        printf("True wind speed: %d \n", true_wind_speed);
+        printf("Sim time %llu\n", this->get_sim_time());
+#endif
+
 
         mavlink_msg_hil_state_quaternion_pack(
             system_id,
@@ -228,20 +269,28 @@ public:
         float body_frame_acc[3] = {0}; // m/s**2
         float gyro_xyz[3] = {0}; // rad/s
         float magfield[3] = {0}; // gauss
-        float abs_pressure = 1033.0; // hPa // Random value from (http://www.isleofskyeweather.co.uk/wxbarosummary.php)
-        float diff_pressure = abs_pressure;
+        float abs_pressure = 0; // hPa
+        float diff_pressure = 0;
 
         this->get_body_frame_acceleration((float*)body_frame_acc);
         this->get_rpy_speed((float*) gyro_xyz);
         this->get_lat_lon_alt((int32_t*)lat_lon_alt);
+        abs_pressure = DroneStateEncoder::alt_to_baro((double)lat_lon_alt[2] / 1000) / 100;
 
         Eigen::VectorXd mag_field_vec = magnetic_field_for_latlonalt((const int32_t*)lat_lon_alt);
         for (int i = 0; i < mag_field_vec.size(); i++) magfield[i] = mag_field_vec[i];
 
-        // printf("GYRO xyz: %f %f %f \n", gyro_xyz[0], gyro_xyz[1], gyro_xyz[2]);
-        // printf("Lat Lon Alt: %d %d %d \n", lat_lon_alt[0], lat_lon_alt[1], lat_lon_alt[2]);
-        // printf("Magfield: %f %f %f \n", magfield[0], magfield[1], magfield[2]);
-        // printf("Body frame Acceleration: %f %f %f \n", body_frame_acc[0], body_frame_acc[1], body_frame_acc[2]);
+#ifdef HIL_SENSOR_VERBOSE
+        printf("[HIL_SENSOR]\n");
+        printf("Body frame Acceleration: %f %f %f \n", body_frame_acc[0], body_frame_acc[1], body_frame_acc[2]);
+        printf("GYRO xyz: %f %f %f \n", gyro_xyz[0], gyro_xyz[1], gyro_xyz[2]);
+        printf("Magfield: %f %f %f \n", magfield[0], magfield[1], magfield[2]);
+        printf("Absolute pressure: %f\n", abs_pressure);
+        printf("Differential pressure: %f\n", diff_pressure);
+        printf("Alt: %d \n", lat_lon_alt[2]);
+        printf("Temperature %f\n", this->get_temperature_reading());
+        printf("Sim time %llu\n", this->get_sim_time());
+#endif
 
         mavlink_msg_hil_sensor_pack(
             system_id,
@@ -261,7 +310,7 @@ public:
             diff_pressure,
             lat_lon_alt[2], // Altitude (Should be noisy -- exact for now)
             this->get_temperature_reading(),
-            7167, // Fields updated (all)
+            0b111 | 0b111000 | 0b111000000 | 0b1111000000000,//4294967295,// 7167, // Fields updated (all)
             0 // ID
         );
 
@@ -300,11 +349,20 @@ public:
         this->get_vehicle_yaw_wrt_earth_north(&vehicle_yaw);
         this->get_ground_speed((int16_t*)ground_speed);
         gps_ground_speed = sqrt(pow(ground_speed[0], 2) + pow(ground_speed[1], 2));
-        
-        // printf("GPS SENSOR\n");
-        // printf("Lon Lat Alt: %d %d %d \n", lon_lat_alt[0], lon_lat_alt[1], lon_lat_alt[2]);
-        // printf("Ground speed: %d %d %d \n", ground_speed[0], ground_speed[1], ground_speed[2]);
-        // printf("gps_velocity_ned: %d %d %d \n", gps_velocity_ned[0], gps_velocity_ned[1], gps_velocity_ned[2]);
+
+#ifdef HIL_GPS_VERBOSE
+        printf("[GPS SENSOR]\n");
+        printf("Lon Lat Alt: %d %d %d \n", lon_lat_alt[0], lon_lat_alt[1], lon_lat_alt[2]);
+        printf("EPH EPV: %d %d \n", eph, epv);
+        printf("Ground speed: %d %d %d \n", ground_speed[0], ground_speed[1], ground_speed[2]);
+        printf("GPS ground speed: %d\n", gps_ground_speed);
+        printf("GPS velocity NED: %d %d %d \n", gps_velocity_ned[0], gps_velocity_ned[1], gps_velocity_ned[2]);
+        printf("Course over ground: %d \n",  course_over_ground);
+        printf("Sats visible: %d \n",  sat_visible);
+        printf("Vehicle yaw: %d \n",  vehicle_yaw);
+        printf("Sim time %llu\n", this->get_sim_time());
+#endif
+
 
         mavlink_msg_hil_gps_pack(
             system_id,

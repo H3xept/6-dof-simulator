@@ -1,6 +1,8 @@
 #include "Drone.h"
 #include "Logging/ConsoleLogger.h"
 
+// #define HIL_ACTUATOR_CONTROLS_VERBOSE
+
 DroneConfig config_from_file_path(char* path) {
     DroneConfig conf;
     std::ifstream fin(path);
@@ -36,7 +38,7 @@ Drone::Drone(char* config_file, MAVLinkMessageRelay& connection) :
         } 
         // This is a hack, please check with Gianluca what's going on.
         // If state[3] is initialised to 0 the ODE solver populates the state with nan(s).
-        this->state[2] = 0; this->state[3] = 0.0001; 
+        this->state[3] = 0.0001; 
     }
 
 void Drone::_setup_drone() {
@@ -62,7 +64,6 @@ void Drone::_step_dynamics(boost::chrono::microseconds us) {
                 {
                     this->dynamics.evaluate(t,x,dx);
                     this->dx_state = dx;
-                    this->state = x;
                 }
         ,
         this->state,
@@ -99,16 +100,14 @@ void Drone::_publish_hil_state_quaternion() {
 void Drone::_publish_state(boost::chrono::microseconds us)
  {
     if (!this->connection.connection_open()) return;
+    if (!(this->should_reply_lockstep || this->hil_actuator_controls_msg_n < 300)) return;
 
-    if (this->should_reply_lockstep || this->hil_actuator_controls_msg_n < 300) {
-        // TODO: move time computation up a layer
-        this->time += us;
-        this->_publish_hil_gps();
-        this->_publish_hil_sensor();
-        this->_publish_system_time();
-        this->should_reply_lockstep = false;
-    }
-
+    // TODO: move time computation up a layer
+    this->time += us;
+    this->_publish_hil_gps();
+    this->_publish_hil_sensor();
+    this->_publish_system_time();
+    this->should_reply_lockstep = false;
 
     bool should_send_autopilot_telemetry = 
         (this->time - this->last_autopilot_telemetry).count()
@@ -153,7 +152,7 @@ void Drone::_process_hil_actuator_controls(mavlink_message_t m) {
     mavlink_hil_actuator_controls_t controls;
     mavlink_msg_hil_actuator_controls_decode(&m, &controls);
     this->armed = (controls.mode & MAV_MODE_FLAG_SAFETY_ARMED) > 0;
-    this->mav_mode = controls.mode;
+    //this->mav_mode = controls.mode;
     
     Eigen::VectorXd vtol_prop_controls{4};
     for (int i = 0; i < 4; i++) vtol_prop_controls[i] = controls.controls[i];
@@ -161,11 +160,18 @@ void Drone::_process_hil_actuator_controls(mavlink_message_t m) {
     for (int i = 0; i < 2; i++) ailerons_controls[i] = controls.controls[4+i];
     Eigen::VectorXd thrust_propeller_controls{1};
     for (int i = 0; i < 1; i++) thrust_propeller_controls[i] = controls.controls[8+i];
-    
-    // printf("VTOL PROPS: %f %f %f %f\n", vtol_prop_controls[0], vtol_prop_controls[1], vtol_prop_controls[2], vtol_prop_controls[3]);
+
+#ifdef HIL_ACTUATOR_CONTROLS_VERBOSE
+    printf("HIL_ACTUATOR_CONTROLS:\n");
+    for (int i = 0; i < 16; i++) {
+        printf("\tControl #%d: %f\n", i, controls.controls[i]);
+    } printf("\n");
+#endif
+
     this->thrust_propellers.set_control(thrust_propeller_controls);
     this->ailerons.set_control(ailerons_controls);
-    // TODO: add vtol propellers
+    this->vtol_propellers.set_control(vtol_prop_controls);
+    
 }
 
 void Drone::_process_mavlink_message(mavlink_message_t m) {
@@ -176,7 +182,6 @@ void Drone::_process_mavlink_message(mavlink_message_t m) {
             break;
         case MAVLINK_MSG_ID_HIL_ACTUATOR_CONTROLS:
             logger->debug_log("MSG: HIL_ACTUATOR_CONTROLS");
-            printf("-> %llu\n", this->get_sim_time());
             this->_process_hil_actuator_controls(m);
             break;
         case MAVLINK_MSG_ID_COMMAND_LONG:

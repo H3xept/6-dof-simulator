@@ -10,7 +10,7 @@ int main(int argc, char const *argv[])
 {
 
     ConsoleLogger* cl = ConsoleLogger::shared_instance();
-    cl->set_debug(true);
+    cl->set_debug(false);
 
     boost::asio::io_service service;
     MAVLinkConnectionHandler handler{service, ConnectionTarget::PX4};
