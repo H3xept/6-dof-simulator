@@ -78,10 +78,10 @@ protected:
      * Body frame (NED) acceleration (ẍ , ÿ , z̈) in mG
      */
     void get_body_frame_acceleration(float* x_y_z) { // <float(3)>
-#define G_FORCE 9.81
+#define G_FORCE 9.81f
         Eigen::VectorXd state_derivative = this->get_vector_dx_state();
         for (uint i = 0; i < 3; i++) *(x_y_z+i) = state_derivative[3 + i];
-        if (x_y_z[2] == 0) { // FIX FOR FAKE GROUND IN 6DOF
+        if (x_y_z[2] < .0001f && x_y_z[2] > -.0001f) { // FIX FOR FAKE GROUND IN 6DOF
             x_y_z[2] = (float)-G_FORCE;
         }
     } 
@@ -116,7 +116,7 @@ protected:
 #define INITIAL_LON -7.5571598
         Eigen::VectorXd state = this->get_vector_state();
         double d_lat_lon_alt[3] = {0};
-        //caelus_fdm::convertState2LlA(INITIAL_LAT, INITIAL_LON, state, d_lat_lon_alt[0], d_lat_lon_alt[1], d_lat_lon_alt[2]);
+        caelus_fdm::convertState2LlA(INITIAL_LAT, INITIAL_LON, state, d_lat_lon_alt[0], d_lat_lon_alt[1], d_lat_lon_alt[2]);
         lat_lon_alt[0] = (int32_t)(d_lat_lon_alt[0] * 1.e7);
         lat_lon_alt[1] = (int32_t)(d_lat_lon_alt[1] * 1.e7);
         lat_lon_alt[2] = (int32_t)((d_lat_lon_alt[2] * 1000)); // m to mm
