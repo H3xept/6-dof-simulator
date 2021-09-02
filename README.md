@@ -48,3 +48,13 @@ To display the MAVLink messages passed to the autopilot, uncomment the relevant 
 
 ## Inspect received actuator controls
 To display the received actuator controls from the autopilot, uncomment the relevant define in `Drone.cc`.
+
+# Maintenance 
+## CAELUS_FDM dependency
+The 6DOFSimulator uses the equations of motion implemented in the CAELUS_FDM package.
+The desired version is specified in the `dependencies/CMakeLists.txt` file, under the `GIT_TAG` key.
+
+If one desires to use another version of the CAELUS_FDM library:
+
+1. Update the GIT_TAG value with the desired commit hash
+2. Re-issue the installation command for the 6DOF library (`bash setup.sh`)
