@@ -1,7 +1,7 @@
 #include "Drone.h"
 #include "Logging/ConsoleLogger.h"
 
-// #define HIL_ACTUATOR_CONTROLS_VERBOSE
+#define HIL_ACTUATOR_CONTROLS_VERBOSE
 
 DroneConfig config_from_file_path(char* path) {
     DroneConfig conf;

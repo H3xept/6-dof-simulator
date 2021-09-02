@@ -75,7 +75,7 @@ protected:
     } 
     
     /**
-     * Body frame (NED) acceleration (ẍ , ÿ , z̈) in mG
+     * Body frame (NED) acceleration (ẍ , ÿ , z̈) in m/s**2
      */
     void get_body_frame_acceleration(float* x_y_z) { // <float(3)>
 #define G_FORCE 9.81f
@@ -116,7 +116,7 @@ protected:
 #define INITIAL_LON -7.5571598
         Eigen::VectorXd state = this->get_vector_state();
         double d_lat_lon_alt[3] = {0};
-        caelus_fdm::convertState2LlA(INITIAL_LAT, INITIAL_LON, state, d_lat_lon_alt[0], d_lat_lon_alt[1], d_lat_lon_alt[2]);
+        // caelus_fdm::convertState2LlA(INITIAL_LAT, INITIAL_LON, state, d_lat_lon_alt[0], d_lat_lon_alt[1], d_lat_lon_alt[2]);
         lat_lon_alt[0] = (int32_t)(d_lat_lon_alt[0] * 1.e7);
         lat_lon_alt[1] = (int32_t)(d_lat_lon_alt[1] * 1.e7);
         lat_lon_alt[2] = (int32_t)((d_lat_lon_alt[2] * 1000)); // m to mm
@@ -227,12 +227,12 @@ public:
 
         printf("[HIL STATE QUATERNION]\n");
         printf("Attitude quaternion: %f %f %f %f \n", attitude[0], attitude[1], attitude[2], attitude[3]);
-        printf("Attitude euler: roll: %f pitch: %f yaw: %f \n", attitude_euler[0], attitude_euler[1], attitude_euler[2]);
-        printf("RPY Speed: %f %f %f \n", rpy_speed[0], rpy_speed[1], rpy_speed[2]);
-        printf("Lat Lon Alt: %d %d %d \n", lat_lon_alt[0], lat_lon_alt[1], lat_lon_alt[2]);
-        printf("Ground speed: %d %d %d \n", ground_speed[0], ground_speed[1], ground_speed[2]);
-        printf("Acceleration: %d %d %d \n", acceleration[0], acceleration[1], acceleration[2]);
-        printf("True wind speed: %d \n", true_wind_speed);
+        printf("Attitude euler (rad): roll: %f pitch: %f yaw: %f \n", attitude_euler[0], attitude_euler[1], attitude_euler[2]);
+        printf("RPY Speed (rad/s): %f %f %f \n", rpy_speed[0], rpy_speed[1], rpy_speed[2]);
+        printf("Lat Lon Alt (degE7, degE7, mm): %d %d %d \n", lat_lon_alt[0], lat_lon_alt[1], lat_lon_alt[2]);
+        printf("Ground speed (m/s): %d %d %d \n", ground_speed[0], ground_speed[1], ground_speed[2]);
+        printf("Acceleration (mG): %d %d %d \n", acceleration[0], acceleration[1], acceleration[2]);
+        printf("True wind speed (m/s): %d \n", true_wind_speed);
         printf("Sim time %llu\n", this->get_sim_time());
 #endif
 
@@ -266,6 +266,7 @@ public:
         mavlink_message_t msg;
         
         int32_t lat_lon_alt[3] = {0};
+        float drone_x_y_z[3] = {0};
         float body_frame_acc[3] = {0}; // m/s**2
         float gyro_xyz[3] = {0}; // rad/s
         float magfield[3] = {0}; // gauss
@@ -275,20 +276,23 @@ public:
         this->get_body_frame_acceleration((float*)body_frame_acc);
         this->get_rpy_speed((float*) gyro_xyz);
         this->get_lat_lon_alt((int32_t*)lat_lon_alt);
-        abs_pressure = DroneStateEncoder::alt_to_baro((double)lat_lon_alt[2] / 1000) / 100;
+        this->get_body_frame_origin((float*)drone_x_y_z);
+
+        abs_pressure = DroneStateEncoder::alt_to_baro((double)drone_x_y_z[2]) / 100;
 
         Eigen::VectorXd mag_field_vec = magnetic_field_for_latlonalt((const int32_t*)lat_lon_alt);
         for (int i = 0; i < mag_field_vec.size(); i++) magfield[i] = mag_field_vec[i];
 
 #ifdef HIL_SENSOR_VERBOSE
         printf("[HIL_SENSOR]\n");
-        printf("Body frame Acceleration: %f %f %f \n", body_frame_acc[0], body_frame_acc[1], body_frame_acc[2]);
-        printf("GYRO xyz: %f %f %f \n", gyro_xyz[0], gyro_xyz[1], gyro_xyz[2]);
-        printf("Magfield: %f %f %f \n", magfield[0], magfield[1], magfield[2]);
-        printf("Absolute pressure: %f\n", abs_pressure);
-        printf("Differential pressure: %f\n", diff_pressure);
-        printf("Alt: %d \n", lat_lon_alt[2]);
-        printf("Temperature %f\n", this->get_temperature_reading());
+        printf("Body frame Acceleration (m/s**2): %f %f %f \n", body_frame_acc[0], body_frame_acc[1], body_frame_acc[2]);
+        printf("Body frame xyz (NED frame) (m): %f %f %f \n", drone_x_y_z[0], drone_x_y_z[1], drone_x_y_z[2]);
+        printf("GYRO xyz speed (rad/s): %f %f %f \n", gyro_xyz[0], gyro_xyz[1], gyro_xyz[2]);
+        printf("Magfield (gauss): %f %f %f \n", magfield[0], magfield[1], magfield[2]);
+        printf("Absolute pressure (hPa): %f\n", abs_pressure);
+        printf("Differential pressure (hPa): %f\n", diff_pressure);
+        printf("Alt (m) : %f \n", drone_x_y_z[2]);
+        printf("Temperature (C): %f\n", this->get_temperature_reading());
         printf("Sim time %llu\n", this->get_sim_time());
 #endif
 
@@ -308,7 +312,7 @@ public:
             magfield[2],
             abs_pressure,
             diff_pressure,
-            lat_lon_alt[2], // Altitude (Should be noisy -- exact for now)
+            drone_x_y_z[2], // Altitude (Should be noisy -- exact for now)
             this->get_temperature_reading(),
             0b111 | 0b111000 | 0b111000000 | 0b1111000000000,//4294967295,// 7167, // Fields updated (all)
             0 // ID
@@ -352,14 +356,14 @@ public:
 
 #ifdef HIL_GPS_VERBOSE
         printf("[GPS SENSOR]\n");
-        printf("Lon Lat Alt: %d %d %d \n", lon_lat_alt[0], lon_lat_alt[1], lon_lat_alt[2]);
-        printf("EPH EPV: %d %d \n", eph, epv);
-        printf("Ground speed: %d %d %d \n", ground_speed[0], ground_speed[1], ground_speed[2]);
-        printf("GPS ground speed: %d\n", gps_ground_speed);
-        printf("GPS velocity NED: %d %d %d \n", gps_velocity_ned[0], gps_velocity_ned[1], gps_velocity_ned[2]);
+        printf("Lon Lat Alt (degE7, degE7, mm): %d %d %d \n", lon_lat_alt[0], lon_lat_alt[1], lon_lat_alt[2]);
+        printf("EPH EPV (dimensionless): %d %d \n", eph, epv);
+        printf("Ground speed (m/s): %d %d %d \n", ground_speed[0], ground_speed[1], ground_speed[2]);
+        printf("GPS ground speed (m/s): %d\n", gps_ground_speed);
+        printf("GPS velocity NED (Earth frame) (m/s): %d %d %d \n", gps_velocity_ned[0], gps_velocity_ned[1], gps_velocity_ned[2]);
         printf("Course over ground: %d \n",  course_over_ground);
         printf("Sats visible: %d \n",  sat_visible);
-        printf("Vehicle yaw: %d \n",  vehicle_yaw);
+        printf("Vehicle yaw (deg): %d \n",  vehicle_yaw);
         printf("Sim time %llu\n", this->get_sim_time());
 #endif
 
