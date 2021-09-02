@@ -37,7 +37,7 @@ Once PX4 displays a ready state, one can interact with the commander via the `co
 To **takeoff** issue `commander takeoff`. This will issue actuation controls to the simulator and the drone will start the VTOL takeoff sequence.
 
 ## Flight Reporting
-The flight logs produced by PX4 can be found in the cloned PX4 repo, under the `build/px4_standard_vtol` folder.
+The flight logs produced by PX4 can be found in the cloned PX4 repo, under the `build/px4_standard_vtol/logs` folder.
 
 To analyse the flight logs (.ulg), one can upload them to the [PX4 Flight Review](https://logs.px4.io/) web application.
 
