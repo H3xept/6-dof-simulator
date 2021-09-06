@@ -37,20 +37,20 @@ void Simulator::start() {
     boost::chrono::steady_clock c;
     boost::chrono::time_point t = c.now();
     while(!this->should_shutdown) {
-        if (true||this->config.running_lockstep) {
+        if (this->config.running_lockstep) {
             // boost::chrono::time_point now = c.now();
             // boost::chrono::microseconds elapsed_time = boost::chrono::duration_cast<boost::chrono::microseconds>(now - t);
             boost::chrono::microseconds time_increment = this->should_advance_time ? this->get_config().timestep_us : boost::chrono::microseconds(0);
             this->update(time_increment);
             this->simulation_time += time_increment;    
             this->should_advance_time = true;
-            // boost::this_thread::sleep_for(boost::chrono::microseconds(time_increment));
+            // boost::this_thread::sleep_for(boost::chrono::microseconds(3000));
             // t = now;
         } else {
             printf("RUNNING IN NON-LOCKSTEP!\n");
             this->update(this->config.timestep_us);
             this->simulation_time += this->config.timestep_us;
-            boost::this_thread::sleep_for(boost::chrono::microseconds(this->config.timestep_us));
+            // boost::this_thread::sleep_for(boost::chrono::microseconds(this->config.timestep_us));
         }
     }
 }

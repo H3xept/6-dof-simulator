@@ -41,11 +41,11 @@ Eigen::VectorXd Propellers::control(double dt) {
     for (uint i = 0; i < this->propeller_n; i++)
         ret[i] = ((-Mt * Me / Rs) + sqrt(pow((Mt * Me / Rs), 2) - 4 * Km * -Mt / Rs * (abs(this->_last_control[i]) * battery_voltage))) / (2 * Km);
 
+
     // printf("Control for %d rotors is:\n", this->propeller_n);
     // printf("\t");
     // for (int i = 0; i < this->propeller_n; i++) printf("#%d: %f, ", i, ret[i]);
     // printf("\n-----------\n");
-    // for (int i = 0; i < this->propeller_n; i++) printf("#%d: %f, ", i, this->_last_control[i]);
     // printf("\n");
 
     return ret;

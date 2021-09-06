@@ -1,7 +1,7 @@
 #include "Drone.h"
 #include "Logging/ConsoleLogger.h"
 
-#define HIL_ACTUATOR_CONTROLS_VERBOSE
+// #define HIL_ACTUATOR_CONTROLS_VERBOSE
 
 DroneConfig config_from_file_path(char* path) {
     DroneConfig conf;
@@ -58,18 +58,90 @@ void Drone::update(boost::chrono::microseconds us) {
     this->_publish_state(us);
 }
 
+void fake_ground_transform(
+                        Eigen::VectorXd& state,
+                        float dt) {
+    printf("Delta t %f\n", dt);
+    state[2] = 0;
+}
+
 void Drone::_step_dynamics(boost::chrono::microseconds us) {
+    Eigen::VectorXd new_state{12};
+    Eigen::VectorXd new_dx_state{12};
+    
+    double time_old = this->get_sim_time() / 1000; // to ms
+    double time_new = 0;
+
+    // this->dynamics_solver.do_step_impl(
+    //     [this] (const Eigen::VectorXd & x, Eigen::VectorXd &dx, const double t) -> void
+    //             {
+    //                 this->dynamics.evaluate(t,x,dx);
+    //             }
+    //     ,
+    //     new_state,
+    //     new_dx_state,
+    //     time_old, 
+    //     new_state,
+    //     new_dx_state,
+    //     us.count() / 2000000.0 // us to sec
+    // );
+
+    // time_new = time_old + (us.count() / 2000000.0);
+
+    // this->dynamics_solver.do_step_impl(
+    //     [this] (const Eigen::VectorXd & x, Eigen::VectorXd &dx, const double t) -> void
+    //             {
+    //                 this->dynamics.evaluate(t,x,dx);
+    //             }
+    //     ,
+    //     new_state,
+    //     new_dx_state,
+    //     time_new, // to ms
+    //     new_state,
+    //     new_dx_state,
+    //     us.count() / 2000000.0 // us to sec
+    // );
+
+    // time_new = time_old + (us.count() / 2000000.0);
+
+    // this->dynamics_solver.calc_state(
+    //     time_new,
+    //     new_state,
+    //     this->state,
+    //     this->dx_state,
+    //     time_old,
+    //     new_state,
+    //     new_dx_state,
+    //     time_new
+    // );
+
+    // STALL DETECTION SHOULD NOT HAPPEN DURING VTOL
+    // fake_ground_transform(new_dx_state, us.count() / 1000000.0f);
+    double dt = us.count() / 1000000.0;
     this->dynamics_solver.do_step(
-        [this] (const Eigen::VectorXd & x, Eigen::VectorXd &dx, const double t) -> void
-                {
-                    this->dynamics.evaluate(t,x,dx);
-                    this->dx_state = dx;
-                }
-        ,
+        [this, dt] (const Eigen::VectorXd & x, Eigen::VectorXd &dx, const double t) -> void
+        {
+            this->dynamics.evaluate(t,x,dx);
+            this->dx_state = dx;
+        },
         this->state,
-        this->get_sim_time() / 1000, // to ms
-        us.count() / 1000000.0 // us to sec
+        this->get_sim_time() / 1000,
+        new_state,
+        dt
     );
+
+    // FAKE GROUND
+    if (new_state[2] < 0.01)
+        new_state[5] += (G_FORCE * dt);
+
+    for ( auto i = 0; i < new_state.size(); i++ )
+        if (std::fabs(new_state(i))<=1.e-4)
+            new_state(i) = 0.;
+    for ( auto i = 0; i < dx_state.size(); i++ )
+        if (std::fabs(dx_state(i))<=1.e-4)
+            dx_state(i) = 0.;
+            
+    this->state = new_state;
 }
 
 MAVLinkMessageRelay& Drone::get_mavlink_message_relay() {
@@ -106,7 +178,6 @@ void Drone::_publish_state(boost::chrono::microseconds us)
     this->time += us;
     this->_publish_hil_gps();
     this->_publish_hil_sensor();
-    this->_publish_system_time();
     this->should_reply_lockstep = false;
 
     bool should_send_autopilot_telemetry = 
@@ -118,6 +189,10 @@ void Drone::_publish_state(boost::chrono::microseconds us)
     this->last_autopilot_telemetry = this->time;
     
     this->_publish_hil_state_quaternion();
+
+    if (this->sys_time_throttle_counter++ % 1000) {
+        this->_publish_system_time();
+    }
 }
 
 /**

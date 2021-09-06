@@ -8,20 +8,41 @@
 #include <Eigen/Eigen>
 #include <mavlink.h>
 #include <EquationsOfMotion/rotationMatrix.h>
+#include <random>
 
 // #define HIL_STATE_QUATERNION_VERBOSE
-// #define HIL_SENSOR_VERBOSE
+#define HIL_SENSOR_VERBOSE
 // #define HIL_GPS_VERBOSE
 
 class DroneStateEncoder {
 protected:
 
+    float noise_Acc = 0.05f;
+    float noise_Gyo = 0.01f;
+    float noise_Mag = 0.005f;
+    float noise_Prs = 0.01f;
+
+    uint32_t baro_throttle_counter = 0;
+
+#define G_FORCE 9.81
 #define K_Pb 101325.0  // static pressure at sea level [Pa]
 #define K_Tb 288.15    // standard temperature at sea level [K]
 #define K_Lb -0.0065   // standard temperature lapse rate [K/m]
 #define K_M 0.0289644  // molar mass of Earth's air [kg/mol]
-#define K_G 9.80665    // gravity
 #define K_R 8.31432    // universal gas constant
+
+    std::default_random_engine generator;
+
+    double randomNoise(float stdDev) {
+        std::normal_distribution<double> dist(0, stdDev);
+        return dist(generator);
+    }
+
+    void add_noise(Eigen::VectorXd vec, float stdDev) {
+        for (int i = 0; i < vec.size(); i++) {
+            vec[i] + randomNoise(stdDev);
+        }
+    }
 
     // Ripped from JMavSim
     /**
@@ -31,12 +52,12 @@ protected:
      */
     static double alt_to_baro(double alt) {
         if (alt <= 11000.0) {
-            return K_Pb * std::pow(K_Tb / (K_Tb + (K_Lb * alt)), (K_G * K_M) / (K_R * K_Lb));
+            return K_Pb * std::pow(K_Tb / (K_Tb + (K_Lb * alt)), (G_FORCE * K_M) / (K_R * K_Lb));
         } else if (alt <= 20000.0) {
             double f = 11000.0;
             double a = alt_to_baro(f);
             double c = K_Tb + (f * K_Lb);
-            return a * std::pow(M_E, ((-K_G) * K_M * (alt - f)) / (K_R * c));
+            return a * std::pow(M_E, ((-G_FORCE) * K_M * (alt - f)) / (K_R * c));
         }
         return 0.0;
     }
@@ -61,8 +82,8 @@ protected:
     void get_rpy_speed(float* rpy) { // <float(3)>
         Eigen::VectorXd state = this->get_vector_state();
         for (uint i = 0; i < 3; i++) *(rpy+i) = state[i + 9];
-    } 
-    
+    }
+
     /**
      * Ground speed (lat. , lon. , alt.) in cm/s
      */
@@ -78,12 +99,8 @@ protected:
      * Body frame (NED) acceleration (ẍ , ÿ , z̈) in m/s**2
      */
     void get_body_frame_acceleration(float* x_y_z) { // <float(3)>
-#define G_FORCE 9.81f
         Eigen::VectorXd state_derivative = this->get_vector_dx_state();
         for (uint i = 0; i < 3; i++) *(x_y_z+i) = state_derivative[3 + i];
-        if (x_y_z[2] < .0001f && x_y_z[2] > -.0001f) { // FIX FOR FAKE GROUND IN 6DOF
-            x_y_z[2] = (float)-G_FORCE;
-        }
     } 
 
     /**
@@ -105,21 +122,108 @@ protected:
         for (uint i = 0; i < 3; i++) *(xyz+i) = earth_frame_velocity[i];
     }   
 
+    #define DEG_TO_RAD (M_PI / 180.0)
+    #define RAD_TO_DEG (180.0 / M_PI)
+
+    void ned_to_ecef(double lat0, double lon0, double h0, Eigen::VectorXd& state, double& x, double& y, double& z) {
+    // WGS-84 geodetic constants
+    const double a = 6378137.0;         // WGS-84 Earth semimajor axis (m)
+
+    const double b = 6356752.31414036;     // Derived Earth semiminor axis (m)
+    const double f = (a - b) / a;           // Ellipsoid Flatness
+    const double f_inv = 1.0 / f;       // Inverse flattening
+
+    //const double f_inv = 298.257223563; // WGS-84 Flattening Factor of the Earth 
+    //const double b = a - a / f_inv;
+    //const double f = 1.0 / f_inv;
+
+    const double a_sq = a * a;
+    const double b_sq = b * b;
+    const double e_sq = f * (2 - f);    // Square of Eccentricity
+
+        double xEast = state[0];
+        double yNorth = state[1];
+        double zUp = -1 * state[2];
+
+        // Convert to radians in notation consistent with the paper:
+        double lambda = lat0 * DEG_TO_RAD;
+        double phi = lon0 * DEG_TO_RAD;
+        double s = sin(lambda);
+        double N = a / sqrt(1 - e_sq * s * s);
+
+        double sin_lambda = sin(lambda);
+        double cos_lambda = cos(lambda);
+        double cos_phi = cos(phi);
+        double sin_phi = sin(phi);
+
+        double x0 = (h0 + N) * cos_lambda * cos_phi;
+        double y0 = (h0 + N) * cos_lambda * sin_phi;
+        double z0 = (h0 + (1 - e_sq) * N) * sin_lambda;
+
+        double xd = -sin_phi * xEast - cos_phi * sin_lambda * yNorth + cos_lambda * cos_phi * zUp;
+        double yd = cos_phi * xEast - sin_lambda * sin_phi * yNorth + cos_lambda * sin_phi * zUp;
+        double zd = cos_lambda * yNorth + sin_lambda * zUp;
+
+        x = xd + x0;
+        y = yd + y0;
+        z = zd + z0;
+    }
+
+    void ecef_to_geodetic(double x, double y, double z,
+                                        double& lat, double& lon, double& h)
+    {
+    // WGS-84 geodetic constants
+    const double a = 6378137.0;         // WGS-84 Earth semimajor axis (m)
+
+    const double b = 6356752.31414036;     // Derived Earth semiminor axis (m)
+    const double f = (a - b) / a;           // Ellipsoid Flatness
+    const double f_inv = 1.0 / f;       // Inverse flattening
+
+    //const double f_inv = 298.257223563; // WGS-84 Flattening Factor of the Earth 
+    //const double b = a - a / f_inv;
+    //const double f = 1.0 / f_inv;
+
+    const double a_sq = a * a;
+    const double b_sq = b * b;
+    const double e_sq = f * (2 - f); 
+        double eps = e_sq / (1.0 - e_sq);
+        double p = sqrt(x * x + y * y);
+        double q = atan2((z * a), (p * b));
+        double sin_q = sin(q);
+        double cos_q = cos(q);
+        double sin_q_3 = sin_q * sin_q * sin_q;
+        double cos_q_3 = cos_q * cos_q * cos_q;
+        double phi = atan2((z + eps * b * sin_q_3), (p - e_sq * a * cos_q_3));
+        double lambda = atan2(y, x);
+        double v = a / sqrt(1.0 - e_sq * sin(phi) * sin(phi));
+        
+        h = (p / cos(phi)) - v;
+        lat = phi * RAD_TO_DEG;
+        lon = lambda * RAD_TO_DEG;
+    }
+
     /**
      * lat: [degE7]
      * lon: [degE7]
      * alt: [mm]
      */
     void get_lat_lon_alt(int32_t* lat_lon_alt) {  // <int32_t(3)>
-// UK Grid origin
-#define INITIAL_LAT 49.766809
-#define INITIAL_LON -7.5571598
+    
+// Glasgow LatLon Elevation
+#define INITIAL_LAT 55.8609825
+#define INITIAL_LON -4.2488787
+#define INITIAL_ALT 26
+
         Eigen::VectorXd state = this->get_vector_state();
         double d_lat_lon_alt[3] = {0};
-        // caelus_fdm::convertState2LlA(INITIAL_LAT, INITIAL_LON, state, d_lat_lon_alt[0], d_lat_lon_alt[1], d_lat_lon_alt[2]);
-        lat_lon_alt[0] = (int32_t)(d_lat_lon_alt[0] * 1.e7);
-        lat_lon_alt[1] = (int32_t)(d_lat_lon_alt[1] * 1.e7);
+
+        ned_to_ecef(INITIAL_LAT, INITIAL_LON, INITIAL_ALT, state, d_lat_lon_alt[0], d_lat_lon_alt[1], d_lat_lon_alt[2]);
+        ecef_to_geodetic(d_lat_lon_alt[0], d_lat_lon_alt[1], d_lat_lon_alt[2], d_lat_lon_alt[0], d_lat_lon_alt[1], d_lat_lon_alt[2]);        
+
+        lat_lon_alt[0] = (int32_t)(d_lat_lon_alt[0] * 1e7);
+        lat_lon_alt[1] = (int32_t)(d_lat_lon_alt[1] * 1e7);
         lat_lon_alt[2] = (int32_t)((d_lat_lon_alt[2] * 1000)); // m to mm
+        
     }
     
     /**
@@ -216,9 +320,9 @@ public:
         this->get_true_wind_speed(&true_wind_speed);
 
         // (acc / G * 1000) => m/s**2 to mG (milli Gs)
-        acceleration[0] = (int16_t)std::round((f_acceleration[0] / G_FORCE) * 1000);
-        acceleration[1] = (int16_t)std::round((f_acceleration[1] / G_FORCE) * 1000);
-        acceleration[2] = (int16_t)std::round((f_acceleration[2] / G_FORCE) * 1000);
+        acceleration[0] = (int16_t)std::round((f_acceleration[0] / fabs(G_FORCE)) * 1000);
+        acceleration[1] = (int16_t)std::round((f_acceleration[1] / fabs(G_FORCE)) * 1000);
+        acceleration[2] = (int16_t)std::round((f_acceleration[2] / fabs(G_FORCE)) * 1000);
 
 #ifdef HIL_STATE_QUATERNION_VERBOSE
         Eigen::VectorXd& state = this->get_vector_state();
@@ -278,8 +382,7 @@ public:
         this->get_lat_lon_alt((int32_t*)lat_lon_alt);
         this->get_body_frame_origin((float*)drone_x_y_z);
 
-        abs_pressure = DroneStateEncoder::alt_to_baro((double)drone_x_y_z[2]) / 100;
-
+        abs_pressure = DroneStateEncoder::alt_to_baro((double)lat_lon_alt[2] / 1000) / 100;
         Eigen::VectorXd mag_field_vec = magnetic_field_for_latlonalt((const int32_t*)lat_lon_alt);
         for (int i = 0; i < mag_field_vec.size(); i++) magfield[i] = mag_field_vec[i];
 
@@ -291,30 +394,31 @@ public:
         printf("Magfield (gauss): %f %f %f \n", magfield[0], magfield[1], magfield[2]);
         printf("Absolute pressure (hPa): %f\n", abs_pressure);
         printf("Differential pressure (hPa): %f\n", diff_pressure);
-        printf("Alt (m) : %f \n", drone_x_y_z[2]);
+        printf("Alt (m) : %d \n", lat_lon_alt[2]);
         printf("Temperature (C): %f\n", this->get_temperature_reading());
         printf("Sim time %llu\n", this->get_sim_time());
 #endif
 
+        
         mavlink_msg_hil_sensor_pack(
             system_id,
             component_id,
             &msg,
             this->get_sim_time(),
-            body_frame_acc[0],
-            body_frame_acc[1],
-            body_frame_acc[2],
-            gyro_xyz[0],
-            gyro_xyz[1],
-            gyro_xyz[2],
-            magfield[0],
-            magfield[1],
-            magfield[2],
-            abs_pressure,
+            body_frame_acc[0] + randomNoise(this->noise_Acc),
+            body_frame_acc[1] + randomNoise(this->noise_Acc),
+            body_frame_acc[2] + randomNoise(this->noise_Acc),
+            gyro_xyz[0] + randomNoise(this->noise_Gyo),
+            gyro_xyz[1] + randomNoise(this->noise_Gyo),
+            gyro_xyz[2] + randomNoise(this->noise_Gyo),
+            magfield[0] + randomNoise(this->noise_Mag),
+            magfield[1] + randomNoise(this->noise_Mag),
+            magfield[2] + randomNoise(this->noise_Mag),
+            abs_pressure + randomNoise(this->noise_Prs),
             diff_pressure,
-            drone_x_y_z[2], // Altitude (Should be noisy -- exact for now)
-            this->get_temperature_reading(),
-            0b111 | 0b111000 | 0b111000000 | 0b1111000000000,//4294967295,// 7167, // Fields updated (all)
+            lat_lon_alt[2] + randomNoise(this->noise_Prs),
+            this->get_temperature_reading() + randomNoise(this->noise_Prs),
+            this->baro_throttle_counter++ % 10 ? 0b1101111111111 : 0b1000111111111,
             0 // ID
         );
 
@@ -336,7 +440,7 @@ public:
         // between two points, with respect to the surface of the earth.
         uint16_t course_over_ground = 0; // 0.0..359.99 degrees // cdeg
         // number of visible satellites
-        uint8_t sat_visible = UINT8_MAX;
+        uint8_t sat_visible = 10;
         // Vehicle yaw relative to earth's north
         // Yaw of vehicle relative to Earth's North, zero means not available, use 36000 for north
         uint16_t vehicle_yaw = 0; // 0 means not available
@@ -345,10 +449,11 @@ public:
         // Should smooth overtime from high value to low value
         // to simulate improved measurement accuracy over time.
         // TODO: Implement smoothing (Kalman filter?)
-        uint16_t eph = 0.3f * 100; // minimum HDOP 
-        uint16_t epv = 0.4f * 100; // minimum HDOP 
+        uint16_t eph = 0.3 * 100; // minimum HDOP 
+        uint16_t epv = 0.4 * 100; // minimum HDOP 
 
-        this->get_lat_lon_alt((int32_t*)&lon_lat_alt);
+        this->get_lat_lon_alt((int32_t*)lon_lat_alt);
+
         this->get_earth_fixed_velocity((int16_t*)gps_velocity_ned);
         this->get_vehicle_yaw_wrt_earth_north(&vehicle_yaw);
         this->get_ground_speed((int16_t*)ground_speed);
@@ -374,8 +479,8 @@ public:
             &msg,
             this->get_sim_time(),
             3, // 3d fix
-            lon_lat_alt[1],
             lon_lat_alt[0],
+            lon_lat_alt[1],
             lon_lat_alt[2],
             eph,
             epv,

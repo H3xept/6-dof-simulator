@@ -33,7 +33,8 @@ private:
     // Lockstep fix
     bool should_reply_lockstep = false;
     uint32_t hil_actuator_controls_msg_n = 0;
-
+    uint32_t sys_time_throttle_counter = 0;
+    
     uint8_t mav_mode = 0;
     boost::chrono::microseconds time{0};
     boost::chrono::microseconds last_autopilot_telemetry{0};
