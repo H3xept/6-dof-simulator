@@ -131,7 +131,7 @@ void Drone::_step_dynamics(boost::chrono::microseconds us) {
     );
 
     // FAKE GROUND
-    if (new_state[2] < 0.01)
+    if (new_state[2] > -0.01)
         new_state[5] += (G_FORCE * dt);
 
     for ( auto i = 0; i < new_state.size(); i++ )
@@ -140,7 +140,9 @@ void Drone::_step_dynamics(boost::chrono::microseconds us) {
     for ( auto i = 0; i < dx_state.size(); i++ )
         if (std::fabs(dx_state(i))<=1.e-4)
             dx_state(i) = 0.;
-            
+    
+    // printf("Velocity x: %f y: %f z: %f\n", new_state[3], new_state[4], new_state[5]);
+    
     this->state = new_state;
 }
 

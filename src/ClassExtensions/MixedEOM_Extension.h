@@ -42,12 +42,19 @@ public:
             
             m_ft = Eigen::VectorXd::Zero(3); // m_thrustFixedWingFM.getF();
             m_fq = m_thrustQuadFM.getF();
+            // m_fq[2] *= -1;
 
             m_mg = m_weightFM.getM();
             m_ma = Eigen::VectorXd::Zero(3); // m_AeroFM.getM();
             m_mt = Eigen::VectorXd::Zero(3); // m_thrustFixedWingFM.getM();
             m_mq = m_thrustQuadFM.getM();
-
+            
+            // m_fg[2] *= -1;
+            // m_mg[2] *= -1;
+            
+            // printf("Gravity force %f %f %f\n", m_fg[0], m_fg[1], m_fg[2]);
+            // printf("Thrust force %f %f %f\n", m_fq[0], m_fq[1], m_fq[2]);
+            
 //            m_ft[0] = -m_fa[0]*m_thrustFixedWingFM.get_controller_prop(t)[0];
 
             // assign output
@@ -57,7 +64,9 @@ public:
             dx.segment(0,3) = caelus_fdm::body2earth(x)*Vb;
 
             // body-frame acceleration
-            dx.segment(3,3)  = (m_ft+m_fg+m_fa+m_fq)/m_weightFM.get_mass(); // external forces
+            dx.segment(3,3) = (m_ft+m_fg+m_fa+m_fq)/m_weightFM.get_mass(); // external forces
+
+            // printf("Acceleration generated %f %f %f\n", dx.segment(3,3)[0], dx.segment(3,3)[1], dx.segment(3,3)[2]);
             dx.segment(3,3) -= wb.cross(Vb.eval());
 
             // earth-frame angle rates

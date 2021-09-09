@@ -17,10 +17,10 @@
 class DroneStateEncoder {
 protected:
 
-    float noise_Acc = 0.05f;
-    float noise_Gyo = 0.01f;
-    float noise_Mag = 0.005f;
-    float noise_Prs = 0.01f;
+    float noise_Acc = 0.005f;
+    float noise_Gyo = 0.001f;
+    float noise_Mag = 0.0005f;
+    float noise_Prs = 0.0001f;
 
     uint32_t baro_throttle_counter = 0;
 
@@ -35,7 +35,8 @@ protected:
 
     double randomNoise(float stdDev) {
         std::normal_distribution<double> dist(0, stdDev);
-        return dist(generator);
+        double n = dist(generator);
+        return n;
     }
 
     void add_noise(Eigen::VectorXd vec, float stdDev) {
@@ -66,10 +67,11 @@ protected:
         float roll = euler_rpy[0];
         float pitch = euler_rpy[1];
         float yaw = euler_rpy[2];
-        quaternion[0] = sin(roll/2) * cos(pitch/2) * cos(yaw/2) - cos(roll/2) * sin(pitch/2) * sin(yaw/2);
-        quaternion[1] = cos(roll/2) * sin(pitch/2) * cos(yaw/2) + sin(roll/2) * cos(pitch/2) * sin(yaw/2);
-        quaternion[2] = cos(roll/2) * cos(pitch/2) * sin(yaw/2) - sin(roll/2) * sin(pitch/2) * cos(yaw/2);
-        quaternion[3] = cos(roll/2) * cos(pitch/2) * cos(yaw/2) + sin(roll/2) * sin(pitch/2) * sin(yaw/2);
+        // Order should be w x y z 
+        quaternion[1] = sin(roll/2) * cos(pitch/2) * cos(yaw/2) - cos(roll/2) * sin(pitch/2) * sin(yaw/2);
+        quaternion[2] = cos(roll/2) * sin(pitch/2) * cos(yaw/2) + sin(roll/2) * cos(pitch/2) * sin(yaw/2);
+        quaternion[3] = cos(roll/2) * cos(pitch/2) * sin(yaw/2) - sin(roll/2) * sin(pitch/2) * cos(yaw/2);
+        quaternion[0] = cos(roll/2) * cos(pitch/2) * cos(yaw/2) + sin(roll/2) * sin(pitch/2) * sin(yaw/2);
     }
     
     void get_attitude(float* attitude) { // <float(4)>
@@ -126,24 +128,25 @@ protected:
     #define RAD_TO_DEG (180.0 / M_PI)
 
     void ned_to_ecef(double lat0, double lon0, double h0, Eigen::VectorXd& state, double& x, double& y, double& z) {
-    // WGS-84 geodetic constants
-    const double a = 6378137.0;         // WGS-84 Earth semimajor axis (m)
+        // WGS-84 geodetic constants
+        const double a = 6378137.0;         // WGS-84 Earth semimajor axis (m)
 
-    const double b = 6356752.31414036;     // Derived Earth semiminor axis (m)
-    const double f = (a - b) / a;           // Ellipsoid Flatness
-    const double f_inv = 1.0 / f;       // Inverse flattening
+        const double b = 6356752.31414036;     // Derived Earth semiminor axis (m)
+        const double f = (a - b) / a;           // Ellipsoid Flatness
+        const double f_inv = 1.0 / f;       // Inverse flattening
 
-    //const double f_inv = 298.257223563; // WGS-84 Flattening Factor of the Earth 
-    //const double b = a - a / f_inv;
-    //const double f = 1.0 / f_inv;
+        //const double f_inv = 298.257223563; // WGS-84 Flattening Factor of the Earth 
+        //const double b = a - a / f_inv;
+        //const double f = 1.0 / f_inv;
 
-    const double a_sq = a * a;
-    const double b_sq = b * b;
-    const double e_sq = f * (2 - f);    // Square of Eccentricity
+        const double a_sq = a * a;
+        const double b_sq = b * b;
+        const double e_sq = f * (2 - f);    // Square of Eccentricity
 
         double xEast = state[0];
         double yNorth = state[1];
-        double zUp = -1 * state[2];
+        // double zUp = -1 * state[2];
+        double zUp = state[2];
 
         // Convert to radians in notation consistent with the paper:
         double lambda = lat0 * DEG_TO_RAD;
@@ -172,20 +175,16 @@ protected:
     void ecef_to_geodetic(double x, double y, double z,
                                         double& lat, double& lon, double& h)
     {
-    // WGS-84 geodetic constants
-    const double a = 6378137.0;         // WGS-84 Earth semimajor axis (m)
+        // WGS-84 geodetic constants
+        const double a = 6378137.0;         // WGS-84 Earth semimajor axis (m)
 
-    const double b = 6356752.31414036;     // Derived Earth semiminor axis (m)
-    const double f = (a - b) / a;           // Ellipsoid Flatness
-    const double f_inv = 1.0 / f;       // Inverse flattening
+        const double b = 6356752.31414036;     // Derived Earth semiminor axis (m)
+        const double f = (a - b) / a;           // Ellipsoid Flatness
+        const double f_inv = 1.0 / f;       // Inverse flattening
 
-    //const double f_inv = 298.257223563; // WGS-84 Flattening Factor of the Earth 
-    //const double b = a - a / f_inv;
-    //const double f = 1.0 / f_inv;
-
-    const double a_sq = a * a;
-    const double b_sq = b * b;
-    const double e_sq = f * (2 - f); 
+        const double a_sq = a * a;
+        const double b_sq = b * b;
+        const double e_sq = f * (2 - f); 
         double eps = e_sq / (1.0 - e_sq);
         double p = sqrt(x * x + y * y);
         double q = atan2((z * a), (p * b));
@@ -209,7 +208,7 @@ protected:
      */
     void get_lat_lon_alt(int32_t* lat_lon_alt) {  // <int32_t(3)>
     
-// Glasgow LatLon Elevation
+// Glasgow LatLon Height
 #define INITIAL_LAT 55.8609825
 #define INITIAL_LON -4.2488787
 #define INITIAL_ALT 26
@@ -334,9 +333,9 @@ public:
         printf("Attitude euler (rad): roll: %f pitch: %f yaw: %f \n", attitude_euler[0], attitude_euler[1], attitude_euler[2]);
         printf("RPY Speed (rad/s): %f %f %f \n", rpy_speed[0], rpy_speed[1], rpy_speed[2]);
         printf("Lat Lon Alt (degE7, degE7, mm): %d %d %d \n", lat_lon_alt[0], lat_lon_alt[1], lat_lon_alt[2]);
-        printf("Ground speed (m/s): %d %d %d \n", ground_speed[0], ground_speed[1], ground_speed[2]);
+        printf("Ground speed (m/s): %d %d %d \n", ground_speed[0] / 100, ground_speed[1] / 100, ground_speed[2] / 100);
         printf("Acceleration (mG): %d %d %d \n", acceleration[0], acceleration[1], acceleration[2]);
-        printf("True wind speed (m/s): %d \n", true_wind_speed);
+        printf("True wind speed (m/s): %d \n", true_wind_speed / 100);
         printf("Sim time %llu\n", this->get_sim_time());
 #endif
 
@@ -382,9 +381,11 @@ public:
         this->get_lat_lon_alt((int32_t*)lat_lon_alt);
         this->get_body_frame_origin((float*)drone_x_y_z);
 
-        abs_pressure = DroneStateEncoder::alt_to_baro((double)lat_lon_alt[2] / 1000) / 100;
+        abs_pressure = DroneStateEncoder::alt_to_baro((double)lat_lon_alt[2] / 1000) * 100;
         Eigen::VectorXd mag_field_vec = magnetic_field_for_latlonalt((const int32_t*)lat_lon_alt);
         for (int i = 0; i < mag_field_vec.size(); i++) magfield[i] = mag_field_vec[i];
+        // Rotate magfield according to drone orientation
+        mag_field_vec = caelus_fdm::earth2body(this->get_vector_state()) * mag_field_vec;
 
 #ifdef HIL_SENSOR_VERBOSE
         printf("[HIL_SENSOR]\n");
@@ -394,7 +395,7 @@ public:
         printf("Magfield (gauss): %f %f %f \n", magfield[0], magfield[1], magfield[2]);
         printf("Absolute pressure (hPa): %f\n", abs_pressure);
         printf("Differential pressure (hPa): %f\n", diff_pressure);
-        printf("Alt (m) : %d \n", lat_lon_alt[2]);
+        printf("Alt (m) : %d \n", lat_lon_alt[2] / 1000);
         printf("Temperature (C): %f\n", this->get_temperature_reading());
         printf("Sim time %llu\n", this->get_sim_time());
 #endif
@@ -415,10 +416,10 @@ public:
             magfield[1] + randomNoise(this->noise_Mag),
             magfield[2] + randomNoise(this->noise_Mag),
             abs_pressure + randomNoise(this->noise_Prs),
-            diff_pressure,
+            diff_pressure + randomNoise(this->noise_Prs),
             lat_lon_alt[2] + randomNoise(this->noise_Prs),
             this->get_temperature_reading() + randomNoise(this->noise_Prs),
-            this->baro_throttle_counter++ % 10 ? 0b1101111111111 : 0b1000111111111,
+            0b1101111111111,
             0 // ID
         );
 

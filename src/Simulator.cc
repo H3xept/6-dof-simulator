@@ -44,7 +44,7 @@ void Simulator::start() {
             this->update(time_increment);
             this->simulation_time += time_increment;    
             this->should_advance_time = true;
-            // boost::this_thread::sleep_for(boost::chrono::microseconds(3000));
+            boost::this_thread::sleep_for(boost::chrono::microseconds(3000));
             // t = now;
         } else {
             printf("RUNNING IN NON-LOCKSTEP!\n");
