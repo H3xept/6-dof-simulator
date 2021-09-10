@@ -19,10 +19,7 @@
 #include "Interfaces/DroneStateEncoder.h"
 #include "Propellers.h"
 #include "Ailerons.h"
-
-#define STATE_SIZE 12
-
-typedef boost::numeric::odeint::runge_kutta_dopri5<Eigen::VectorXd,double,Eigen::VectorXd,double,boost::numeric::odeint::vector_space_algebra> ODESolver;
+#include "DroneSensors.h"
 
 class Drone : public DynamicObject,
               public MAVLinkSystem,
@@ -42,16 +39,20 @@ private:
 
     bool armed = false;
 
+// Glasgow LatLon Height
+#define INITIAL_LAT 55.8609825
+#define INITIAL_LON -4.2488787
+#define INITIAL_ALT 2600 // mm
+
+    DroneSensors sensors{(DynamicObject&)*this,
+        LatLonAlt{ INITIAL_LAT, INITIAL_LON, INITIAL_ALT }
+        };
+
     Propellers thrust_propellers{1};
     Propellers vtol_propellers{4};
     Ailerons ailerons;
 
     DroneConfig config;
-
-    Eigen::VectorXd state;
-    Eigen::VectorXd dx_state;
-    MixedEOM dynamics;
-    ODESolver dynamics_solver;
 
     MAVLinkMessageRelay& connection;
     boost::lockfree::queue<mavlink_message_t, boost::lockfree::capacity<50>> message_queue;
@@ -69,13 +70,11 @@ private:
     void _publish_state(boost::chrono::microseconds dt);
     void _publish_system_time();
     
-    void _step_dynamics(boost::chrono::microseconds us);
 public:
 
     Drone(char* config_file, MAVLinkMessageRelay& connection);
     ~Drone() {};
 
-    Eigen::VectorXd& get_state() override { return this->state; }
     DroneConfig get_config() { return this->config; }
     bool is_armed() { return this->armed; }
 
@@ -86,12 +85,8 @@ public:
     void handle_mavlink_message(mavlink_message_t m) override;
 
     uint64_t get_sim_time() override;
-    Eigen::Vector3d get_environment_wind() override;
-    float get_temperature_reading() override;
     uint8_t get_mav_mode() override;
-
-    Eigen::VectorXd& get_vector_state() override;
-    Eigen::VectorXd& get_vector_dx_state() override;
+    Sensors& get_sensors() override;
 };
 
 #endif // __DRONE_H__

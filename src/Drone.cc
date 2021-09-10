@@ -1,4 +1,6 @@
 #include "Drone.h"
+#include "DroneSensors.h"
+
 #include "Logging/ConsoleLogger.h"
 
 // #define HIL_ACTUATOR_CONTROLS_VERBOSE
@@ -23,127 +25,29 @@ void pp_state(const Eigen::VectorXd state) {
 
 Drone::Drone(char* config_file, MAVLinkMessageRelay& connection) : 
     MAVLinkSystem::MAVLinkSystem(1, 1),
-    state(STATE_SIZE),
-    dx_state(STATE_SIZE),
+    DynamicObject::DynamicObject(config_from_file_path(config_file)),
     config(config_from_file_path(config_file)),
-    dynamics(config),
-    dynamics_solver(),
     connection(connection)
     {
         this->connection.add_message_handler(this);
         this->_setup_drone();
-        for (int i = 0; i < STATE_SIZE; i++) {
-            this->state[i] = 0;
-            this->dx_state[i] = 0;
-        } 
-        // This is a hack, please check with Gianluca what's going on.
-        // If state[3] is initialised to 0 the ODE solver populates the state with nan(s).
-        this->state[3] = 0.0001; 
     }
 
 void Drone::_setup_drone() {
     // Inject controllers into dynamics model
-    this->dynamics.setController([this] (double dt) -> Eigen::VectorXd
+    this->setControllerThrust([this] (double dt) -> Eigen::VectorXd
         { return this->thrust_propellers.control(dt); });
-    this->dynamics.setControllerAero([this] (double dt) -> Eigen::VectorXd
+    this->setControllerAero([this] (double dt) -> Eigen::VectorXd
         { return this->ailerons.control(dt); });
-    this->dynamics.setControllerVTOL([this] (double dt) -> Eigen::VectorXd
+    this->setControllerVTOL([this] (double dt) -> Eigen::VectorXd
         { return this->vtol_propellers.control(dt); });
 }
 
 void Drone::update(boost::chrono::microseconds us) {
     MAVLinkSystem::update(us);
+    DynamicObject::update(us);
     this->_process_mavlink_messages();
-    this->_step_dynamics(us);
     this->_publish_state(us);
-}
-
-void fake_ground_transform(
-                        Eigen::VectorXd& state,
-                        float dt) {
-    printf("Delta t %f\n", dt);
-    state[2] = 0;
-}
-
-void Drone::_step_dynamics(boost::chrono::microseconds us) {
-    Eigen::VectorXd new_state{12};
-    Eigen::VectorXd new_dx_state{12};
-    
-    double time_old = this->get_sim_time() / 1000; // to ms
-    double time_new = 0;
-
-    // this->dynamics_solver.do_step_impl(
-    //     [this] (const Eigen::VectorXd & x, Eigen::VectorXd &dx, const double t) -> void
-    //             {
-    //                 this->dynamics.evaluate(t,x,dx);
-    //             }
-    //     ,
-    //     new_state,
-    //     new_dx_state,
-    //     time_old, 
-    //     new_state,
-    //     new_dx_state,
-    //     us.count() / 2000000.0 // us to sec
-    // );
-
-    // time_new = time_old + (us.count() / 2000000.0);
-
-    // this->dynamics_solver.do_step_impl(
-    //     [this] (const Eigen::VectorXd & x, Eigen::VectorXd &dx, const double t) -> void
-    //             {
-    //                 this->dynamics.evaluate(t,x,dx);
-    //             }
-    //     ,
-    //     new_state,
-    //     new_dx_state,
-    //     time_new, // to ms
-    //     new_state,
-    //     new_dx_state,
-    //     us.count() / 2000000.0 // us to sec
-    // );
-
-    // time_new = time_old + (us.count() / 2000000.0);
-
-    // this->dynamics_solver.calc_state(
-    //     time_new,
-    //     new_state,
-    //     this->state,
-    //     this->dx_state,
-    //     time_old,
-    //     new_state,
-    //     new_dx_state,
-    //     time_new
-    // );
-
-    // STALL DETECTION SHOULD NOT HAPPEN DURING VTOL
-    // fake_ground_transform(new_dx_state, us.count() / 1000000.0f);
-    double dt = us.count() / 1000000.0;
-    this->dynamics_solver.do_step(
-        [this, dt] (const Eigen::VectorXd & x, Eigen::VectorXd &dx, const double t) -> void
-        {
-            this->dynamics.evaluate(t,x,dx);
-            this->dx_state = dx;
-        },
-        this->state,
-        this->get_sim_time() / 1000,
-        new_state,
-        dt
-    );
-
-    // FAKE GROUND
-    if (new_state[2] > -0.01)
-        new_state[5] += (G_FORCE * dt);
-
-    for ( auto i = 0; i < new_state.size(); i++ )
-        if (std::fabs(new_state(i))<=1.e-4)
-            new_state(i) = 0.;
-    for ( auto i = 0; i < dx_state.size(); i++ )
-        if (std::fabs(dx_state(i))<=1.e-4)
-            dx_state(i) = 0.;
-    
-    // printf("Velocity x: %f y: %f z: %f\n", new_state[3], new_state[4], new_state[5]);
-    
-    this->state = new_state;
 }
 
 MAVLinkMessageRelay& Drone::get_mavlink_message_relay() {
@@ -280,27 +184,14 @@ void Drone::handle_mavlink_message(mavlink_message_t m) {
     this->message_queue.push(m);
 }
 
+Sensors& Drone::get_sensors() {
+    return this->sensors;
+}
+
 #pragma mark DroneStateEncoder
 
 uint64_t Drone::get_sim_time() {
     return this->time.count();
-}
-
-Eigen::VectorXd& Drone::get_vector_state() {
-    return this->state;
-}
-
-Eigen::VectorXd& Drone::get_vector_dx_state() {
-    return this->dx_state;
-}
-
-Eigen::Vector3d Drone::get_environment_wind() {
-    Eigen::Vector3d wind = Eigen::Vector3d::Zero(3);
-    return wind;
-}
-
-float Drone::get_temperature_reading() {
-    return 25.0;
 }
 
 uint8_t Drone::get_mav_mode() {
