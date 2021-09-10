@@ -68,8 +68,9 @@ Eigen::Vector3d DroneSensors::get_body_frame_angular_acceleration() {
 
 #pragma mark OTHER_SENSOR_DATA
 
-Eigen::Vector3d DroneSensors::get_magnetic_field(LatLonAlt lat_lon_alt) {
-    Eigen::Vector3d magfield = magnetic_field_for_latlonalt(lat_lon_alt);
+Eigen::Vector3d DroneSensors::get_magnetic_field() {
+    LatLonAlt lLa = this->get_lat_lon_alt();
+    Eigen::Vector3d magfield = magnetic_field_for_latlonalt(lLa);
     // TODO: check this rotation necessary?
     return caelus_fdm::earth2body(this->drone.get_vector_state()) * magfield;
 }
@@ -149,9 +150,10 @@ uint16_t DroneSensors::get_true_wind_speed() {
  * alt: [mm]
  */
 LatLonAlt DroneSensors::get_lat_lon_alt() {
-    LatLonAlt lLa{0,0,0};
+    LatLonAlt lLa;
 
     Eigen::VectorXd state = this->drone.get_vector_state();
+
     double lat_lon_alt[3] = {0};
 
     ned_to_ecef(
@@ -175,8 +177,9 @@ LatLonAlt DroneSensors::get_lat_lon_alt() {
 
     lLa.latitude_deg = lat_lon_alt[0];
     lLa.longitude_deg = lat_lon_alt[1];
-    lLa.altitude_mm = lat_lon_alt[2]; // m to mm
-        
+    lLa.altitude_mm = lat_lon_alt[2] * 1000; // m to mm
+
+    return lLa;
 }
 
 bool DroneSensors::new_gps_data() {

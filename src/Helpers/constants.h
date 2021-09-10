@@ -18,4 +18,7 @@ const double b_sq = b * b;
 const double e_sq = f * (2 - f);    // Square of Eccentricity
 const double eps = e_sq / (1.0 - e_sq);
 
+#define DEG_TO_RAD (M_PI / 180.0)
+#define RAD_TO_DEG (180.0 / M_PI)
+
 #endif // __CONSTANTS_H__

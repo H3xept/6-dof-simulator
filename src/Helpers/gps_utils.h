@@ -6,15 +6,13 @@
 #include <cmath>
 #include "constants.h"
 
-#define DEG_TO_RAD (M_PI / 180.0)
-#define RAD_TO_DEG (180.0 / M_PI)
 
 void ned_to_ecef(double lat0, double lon0, double h0, Eigen::VectorXd& state, double& x, double& y, double& z) {
 
     double xEast = state[0];
     double yNorth = state[1];
     // double zUp = -1 * state[2];
-    double zUp = state[2];
+    double zUp = -1 * state[2];
 
     // Convert to radians in notation consistent with the paper:
     double lambda = lat0 * DEG_TO_RAD;

@@ -20,7 +20,7 @@ public:
     virtual Eigen::Vector3d get_earth_frame_angle_rates() = 0;
     virtual Eigen::Vector3d get_body_frame_angular_acceleration() = 0;
     // --
-    virtual Eigen::Vector3d get_magnetic_field(LatLonAlt lat_lon_alt) = 0;
+    virtual Eigen::Vector3d get_magnetic_field() = 0;
     virtual double get_pressure() = 0;
     virtual GPSData get_gps_data() = 0;
     virtual LatLonAlt get_lat_lon_alt() = 0;

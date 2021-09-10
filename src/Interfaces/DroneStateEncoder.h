@@ -15,11 +15,24 @@
 #include <mavlink.h>
 #include <EquationsOfMotion/rotationMatrix.h>
 
-// #define HIL_STATE_QUATERNION_VERBOSE
-#define HIL_SENSOR_VERBOSE
+#define HIL_STATE_QUATERNION_VERBOSE
+// #define HIL_SENSOR_VERBOSE
 // #define HIL_GPS_VERBOSE
 
 class DroneStateEncoder {
+private:
+    // Standard deviations for sensor noise
+    float noise_Acc = 0.005f;
+    float noise_Gyo = 0.001f;
+    float noise_Mag = 0.0005f;
+    float noise_Prs = 0.0001f;
+
+    std::default_random_engine noise_generator;
+    double randomNoise(float stdDev) {
+        std::normal_distribution<double> dist(0, stdDev);
+        double n = dist(noise_generator);
+        return n;
+    }
 public:
     virtual uint64_t get_sim_time() = 0;
     virtual Sensors& get_sensors() = 0;
@@ -28,7 +41,7 @@ public:
         Sensors& sensors = this->get_sensors();
         mavlink_message_t msg;
 
-        Eigen::Vector3d attitude = euler_angles_to_quaternions(sensors.get_attitude());
+        Eigen::VectorXd attitude = euler_angles_to_quaternions(sensors.get_attitude());
         float attitude_float[4] = {0};
         for (int i = 0; i < attitude.size(); i++) attitude_float[i] = attitude[i];
 
@@ -90,7 +103,7 @@ public:
         Eigen::Vector3d drone_x_y_z = sensors.get_body_frame_origin();
         Eigen::Vector3d body_frame_acc = sensors.get_body_frame_acceleration();
         Eigen::Vector3d gyro_xyz = sensors.get_gyro();
-        Eigen::Vector3d magfield = sensors.get_magnetic_field(lat_lon_alt);
+        Eigen::Vector3d magfield = sensors.get_magnetic_field();
         double abs_pressure = sensors.get_pressure() * 100; // Pa to hPa
         double temperature = sensors.get_environment_temperature();
         float diff_pressure = 0;
@@ -113,19 +126,19 @@ public:
             component_id,
             &msg,
             this->get_sim_time(),
-            body_frame_acc[0],
-            body_frame_acc[1],
-            body_frame_acc[2],
-            gyro_xyz[0],
-            gyro_xyz[1],
-            gyro_xyz[2],
-            magfield[0],
-            magfield[1],
-            magfield[2],
-            abs_pressure,
-            diff_pressure,
-            lat_lon_alt.altitude_mm,
-            temperature,
+            body_frame_acc[0] + randomNoise(this->noise_Acc),
+            body_frame_acc[1] + randomNoise(this->noise_Acc),
+            body_frame_acc[2] + randomNoise(this->noise_Acc),
+            gyro_xyz[0] + randomNoise(this->noise_Gyo),
+            gyro_xyz[1] + randomNoise(this->noise_Gyo),
+            gyro_xyz[2] + randomNoise(this->noise_Gyo),
+            magfield[0] + randomNoise(this->noise_Mag),
+            magfield[1] + randomNoise(this->noise_Mag),
+            magfield[2] + randomNoise(this->noise_Mag),
+            abs_pressure + randomNoise(this->noise_Prs),
+            diff_pressure + randomNoise(this->noise_Prs),
+            lat_lon_alt.altitude_mm + randomNoise(this->noise_Prs),
+            temperature + randomNoise(this->noise_Prs),
             0b1101111111111,
             0 // ID
         );

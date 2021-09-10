@@ -65,7 +65,7 @@ protected:
         Eigen::Vector3d Vb = state.segment(3,3);
         Eigen::Vector3d wb = state.segment(9,3);
 
-        dx_state = Eigen::VectorXd{12};
+        dx_state = Eigen::VectorXd::Zero(12);
 
         return;
         
@@ -97,13 +97,24 @@ protected:
         );
     }
 
+    void initialise_state() {
+        this->state = Eigen::VectorXd::Zero(DYNAMIC_OBJECT_STATE_SIZE);
+    }
+
+    void initialise_dx_state() {
+        this->dx_state = Eigen::VectorXd::Zero(DYNAMIC_OBJECT_STATE_SIZE);
+    }
+
 public:
 
     DynamicObject(DroneConfig config) : 
         weight_force_m(Weight{config, G_FORCE}),
         fixed_wing_thrust_m(ThrustFixedWing{config}),
         quadrotor_thrust_m(ThrustQuadrotor{config}),
-        hor_flight_aero_force_m(Aerodynamics{config}) {};
+        hor_flight_aero_force_m(Aerodynamics{config}) {
+            this->initialise_state();
+            this->initialise_dx_state();
+        };
 
     ~DynamicObject() {};
 
