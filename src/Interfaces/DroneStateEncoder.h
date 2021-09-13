@@ -37,6 +37,26 @@ public:
     virtual uint64_t get_sim_time() = 0;
     virtual Sensors& get_sensors() = 0;
 
+    /**
+     * Drone state as populated by the CAELUS_FDM package.
+     * <
+     *  x , y , z    [0:3]  vehicle origin with respect to earth-frame (NED m) (ENU when earth)
+     *  u, v, w      [3:6]  body-frame velocity (m/s)
+     *  ɸ , θ , ѱ    [6:9]  (roll, pitch, yaw) body-frame orientation with respect to earth-frame (rad)
+     *  p, q, r      [9:12] (roll., pitch., yaw.) body-frame orientation velocity (rad/s)
+     * >
+     */
+    virtual Eigen::VectorXd& get_vector_state() = 0;
+    /**
+     *  (FixedWingEOM.h:evaluate)
+     *  Drone state derivative as populated by the CAELUS_FDM package.
+     *  ẋ , ẏ , ż       [0:3]  earth-frame velocity (NED)
+     *  u., v., w.      [3:6]  body-frame acceleration (m/s**2)
+     *  ɸ. , θ. , ѱ.    [6:9]  earth-frame angle rates (Euler rates)
+     *  p. , q. , r.    [9:12] body-frame angular rates (What unit?)
+     */
+    virtual Eigen::VectorXd& get_vector_dx_state() = 0;
+    
     mavlink_message_t hil_state_quaternion_msg(uint8_t system_id, uint8_t component_id) {
         Sensors& sensors = this->get_sensors();
         mavlink_message_t msg;
