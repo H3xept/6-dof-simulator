@@ -32,27 +32,26 @@ protected:
     bool compute_fixed_wing_dynamics = false;
     bool compute_aero_dynamics = false;
     bool compute_weight_dynamics = true;
-
+    
     /**
      * Drone state as populated by the CAELUS_FDM package.
      * <
-     *  x , y , z    [0:3]  body-frame origin with respect to earth-frame (NED m)
-     *  ẋ , ẏ , ż    [3:6]  body-frame velocity (m/s)
+     *  x , y , z    [0:3]  vehicle origin with respect to earth-frame (NED m) (ENU when earth)
+     *  u, v, w      [3:6]  body-frame velocity (m/s)
      *  ɸ , θ , ѱ    [6:9]  (roll, pitch, yaw) body-frame orientation with respect to earth-frame (rad)
-     *  ɸ. , θ. , ѱ. [9:12] (roll., pitch., yaw.) body-frame orientation velocity (rad/s)
+     *  p, q, r      [9:12] (roll., pitch., yaw.) body-frame orientation velocity (rad/s)
      * >
      */
-    Eigen::VectorXd state{DYNAMIC_OBJECT_STATE_SIZE};
-
+    virtual Eigen::VectorXd& get_vector_state() = 0;
     /**
      *  (FixedWingEOM.h:evaluate)
      *  Drone state derivative as populated by the CAELUS_FDM package.
-     *  ẋ , ẏ , ż       [0:3]  earth-frame velocity (What unit?)
-     *  ẍ , ÿ , z̈       [3:6]  body-frame acceleration (m/s**2)
-     *  ? , ? , ?       [6:9]  earth-frame angle rates (Euler rates?)
-     *  ɸ.. , θ.. , ѱ.. [9:12] body-frame angular acceleration (What unit?)
+     *  ẋ , ẏ , ż       [0:3]  earth-frame velocity (NED)
+     *  u., v., w.      [3:6]  body-frame acceleration (m/s**2)
+     *  ɸ. , θ. , ѱ.    [6:9]  earth-frame angle rates (Euler rates)
+     *  p. , q. , r.    [9:12] body-frame angular rates (What unit?)
      */
-    Eigen::VectorXd dx_state{DYNAMIC_OBJECT_STATE_SIZE};
+    virtual Eigen::VectorXd& get_vector_dx_state() = 0;
 
     void step_dynamics(
         boost::chrono::microseconds us,
