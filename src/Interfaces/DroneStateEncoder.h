@@ -5,6 +5,7 @@
 #include "../Logging/ConsoleLogger.h"
 #include "Sensors.h"
 #include "../Helpers/rotation_utils.h"
+#include "../Helpers/rotationMatrix.h"
 #include "../DataStructures/LatLonAlt.h"
 #include "../DataStructures/GPSData.h"
 #include "../DataStructures/GroundSpeed.h"
@@ -13,10 +14,9 @@
 #include <boost/chrono.hpp>
 #include <Eigen/Eigen>
 #include <mavlink.h>
-#include <EquationsOfMotion/rotationMatrix.h>
 
-#define HIL_STATE_QUATERNION_VERBOSE
-// #define HIL_SENSOR_VERBOSE
+// #define HIL_STATE_QUATERNION_VERBOSE
+#define HIL_SENSOR_VERBOSE
 // #define HIL_GPS_VERBOSE
 
 class DroneStateEncoder {
@@ -41,11 +41,11 @@ public:
         Sensors& sensors = this->get_sensors();
         mavlink_message_t msg;
 
-        Eigen::VectorXd attitude = euler_angles_to_quaternions(sensors.get_attitude());
+        Eigen::VectorXd attitude = euler_angles_to_quaternions(sensors.get_earth_frame_attitude());
         float attitude_float[4] = {0};
         for (int i = 0; i < attitude.size(); i++) attitude_float[i] = attitude[i];
 
-        Eigen::Vector3d rpy_speed = sensors.get_gyro();
+        Eigen::Vector3d rpy_speed = sensors.get_body_frame_gyro();
         LatLonAlt lat_lon_alt = sensors.get_lat_lon_alt();
         Eigen::Vector3d ground_speed = sensors.get_absolute_ground_speed() * 100; // m to cm
         Eigen::Vector3d body_frame_acc = sensors.get_body_frame_acceleration();
@@ -54,18 +54,19 @@ public:
         // (acc / G * 1000) => m/s**2 to mG (milli Gs)
         body_frame_acc[0] = (int16_t)std::round((body_frame_acc[0] / fabs(G_FORCE)) * 1000);
         body_frame_acc[1] = (int16_t)std::round((body_frame_acc[1] / fabs(G_FORCE)) * 1000);
-        body_frame_acc[2] = (int16_t)std::round((body_frame_acc[2] / fabs(G_FORCE)) * 1000);
+        // negative z acc (NED -> ENU)
+        body_frame_acc[2] = -(int16_t)std::round((body_frame_acc[2] / fabs(G_FORCE)) * 1000);
 
 #ifdef HIL_STATE_QUATERNION_VERBOSE
-        Eigen::VectorXd& attitude_euler = sensors.get_attitude();
+        Eigen::VectorXd attitude_euler = sensors.get_earth_frame_attitude();
 
         printf("[HIL STATE QUATERNION]\n");
         printf("Attitude quaternion: %f %f %f %f \n", attitude[0], attitude[1], attitude[2], attitude[3]);
         printf("Attitude euler (rad): roll: %f pitch: %f yaw: %f \n", attitude_euler[0], attitude_euler[1], attitude_euler[2]);
         printf("RPY Speed (rad/s): %f %f %f \n", rpy_speed[0], rpy_speed[1], rpy_speed[2]);
-        printf("Lat Lon Alt (degE7, degE7, mm): %d %d %d \n", lat_lon_alt[0], lat_lon_alt[1], lat_lon_alt[2]);
-        printf("Ground speed (m/s): %d %d %d \n", ground_speed[0] / 100, ground_speed[1] / 100, ground_speed[2] / 100);
-        printf("Acceleration (mG): %d %d %d \n", acceleration[0], acceleration[1], acceleration[2]);
+        printf("Lat Lon Alt (degE7, degE7, mm): %f %f %f \n", lat_lon_alt.latitude_deg, lat_lon_alt.longitude_deg, lat_lon_alt.altitude_mm);
+        printf("Ground speed (m/s): %f %f %f \n", ground_speed[0] / 100, ground_speed[1] / 100, ground_speed[2] / 100);
+        printf("Acceleration (mG): %f %f %f \n", body_frame_acc[0], body_frame_acc[1], body_frame_acc[2]);
         printf("True wind speed (m/s): %d \n", true_wind_speed / 100);
         printf("Sim time %llu\n", this->get_sim_time());
 #endif
@@ -100,9 +101,9 @@ public:
         mavlink_message_t msg;
         
         LatLonAlt lat_lon_alt = sensors.get_lat_lon_alt();
-        Eigen::Vector3d drone_x_y_z = sensors.get_body_frame_origin();
+        Eigen::Vector3d drone_x_y_z = sensors.get_earth_frame_position();
         Eigen::Vector3d body_frame_acc = sensors.get_body_frame_acceleration();
-        Eigen::Vector3d gyro_xyz = sensors.get_gyro();
+        Eigen::Vector3d gyro_xyz = sensors.get_body_frame_gyro();
         Eigen::Vector3d magfield = sensors.get_magnetic_field();
         double abs_pressure = sensors.get_pressure() * 100; // Pa to hPa
         double temperature = sensors.get_environment_temperature();

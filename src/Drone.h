@@ -13,13 +13,13 @@
 #include "Interfaces/DynamicObject.h"
 #include "Interfaces/MAVLinkSystem.h"
 #include "Interfaces/Alive.h"
-#include "ClassExtensions/MixedEOM_Extension.h"
 #include "Interfaces/MAVLinkMessageRelay.h"
 #include "Interfaces/MAVLinkMessageHandler.h"
 #include "Interfaces/DroneStateEncoder.h"
 #include "Propellers.h"
 #include "Ailerons.h"
 #include "DroneSensors.h"
+#include "Interfaces/Clock.h"
 
 class Drone : public DynamicObject,
               public MAVLinkSystem,
@@ -70,9 +70,10 @@ private:
     void _publish_state(boost::chrono::microseconds dt);
     void _publish_system_time();
     
+    void fake_ground_transform(boost::chrono::microseconds us);
 public:
 
-    Drone(char* config_file, MAVLinkMessageRelay& connection);
+    Drone(char* config_file, MAVLinkMessageRelay& connection, Clock& clock);
     ~Drone() {};
 
     DroneConfig get_config() { return this->config; }

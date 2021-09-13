@@ -12,19 +12,37 @@
 #include "../ClassExtensions/ThrustQuadrotor_Extension.h"
 #include "../ClassExtensions/ThrustFixedWing_Extension.h"
 #include "../Helpers/constants.h"
+#include "../Helpers/angleRateRotationMatrix.h"
+#include "Clock.h"
 
 typedef boost::numeric::odeint::runge_kutta_dopri5<Eigen::VectorXd,double,Eigen::VectorXd,double,boost::numeric::odeint::vector_space_algebra> ODESolver;
 
 #define DYNAMIC_OBJECT_STATE_SIZE 12
-#define ZEROVEC(x) Eigen::VectorXd{x}
+#define ZEROVEC(x) Eigen::VectorXd::Zero(x)
+
+
+static void pp_state(const Eigen::VectorXd state) {
+    double s[12] = {0};
+    for (int i = 0; i < 12; i++) s[i] = state.data()[i];
+    std::cout << "<==========" << std::endl;
+    std::cout << "X:" << s[0] << ", Y:" << s[1] << ", Z:" << s[2] << std::endl; 
+    std::cout << "Xdot: " << s[3] << ", Ydot: " << s[4] << ", Zdot: " << s[5] << std::endl;
+    std::cout << "Phi:" << s[6] << ", Theta:" << s[7] << ", Psy:" << s[8] << std::endl; 
+    std::cout << "Phidot:" << s[9] << ", Thetadot:" << s[10] << ", Psydot:" << s[11] << std::endl; 
+    std::cout << "==========>" << std::endl;
+}
 
 struct DynamicObject : public EnvironmentObject {
+
 protected:
 
+    double ground_height = 0;
+    
     Weight weight_force_m;
     ThrustFixedWing fixed_wing_thrust_m;
     ThrustQuadrotor quadrotor_thrust_m;
     Aerodynamics hor_flight_aero_force_m;
+    Clock& clock;
 
     ODESolver dynamics_solver;
     
@@ -32,32 +50,34 @@ protected:
     bool compute_fixed_wing_dynamics = false;
     bool compute_aero_dynamics = false;
     bool compute_weight_dynamics = true;
-    
+
+    Eigen::Matrix3d moment_of_inertia;
+     
     /**
      * Drone state as populated by the CAELUS_FDM package.
      * <
      *  x , y , z    [0:3]  vehicle origin with respect to earth-frame (NED m) (ENU when earth)
      *  u, v, w      [3:6]  body-frame velocity (m/s)
-     *  ɸ , θ , ѱ    [6:9]  (roll, pitch, yaw) body-frame orientation with respect to earth-frame (rad)
-     *  p, q, r      [9:12] (roll., pitch., yaw.) body-frame orientation velocity (rad/s)
+     *  ɸ , θ , ѱ    [6:9]  (roll, pitch, yaw) orientation with respect to earth-frame (rad)
+     *  p, q, r      [9:12] body-frame orientation velocity (rad/s)
      * >
      */
-    virtual Eigen::VectorXd& get_vector_state() = 0;
+    Eigen::VectorXd state{DYNAMIC_OBJECT_STATE_SIZE};
     /**
      *  (FixedWingEOM.h:evaluate)
      *  Drone state derivative as populated by the CAELUS_FDM package.
      *  ẋ , ẏ , ż       [0:3]  earth-frame velocity (NED)
      *  u., v., w.      [3:6]  body-frame acceleration (m/s**2)
      *  ɸ. , θ. , ѱ.    [6:9]  earth-frame angle rates (Euler rates)
-     *  p. , q. , r.    [9:12] body-frame angular rates (What unit?)
+     *  p. , q. , r.    [9:12] body-frame angular acceleration (What unit?)
      */
-    virtual Eigen::VectorXd& get_vector_dx_state() = 0;
+    Eigen::VectorXd dx_state{DYNAMIC_OBJECT_STATE_SIZE};
 
     void step_dynamics(
         boost::chrono::microseconds us,
         const Eigen::VectorXd& state,
         Eigen::VectorXd& dx_state) {
-
+        
         Eigen::Vector3d total_forces = this->get_forces();
         Eigen::Vector3d total_momenta = this->get_momenta();
     
@@ -66,17 +86,20 @@ protected:
 
         dx_state = Eigen::VectorXd::Zero(12);
 
-        return;
-        
         dx_state.segment(0,3) = caelus_fdm::body2earth(state)*Vb;
         dx_state.segment(3,3)  = total_forces/this->weight_force_m.get_mass(); // external forces
+        
         dx_state.segment(3,3) -= wb.cross(Vb.eval()); // account for frame dependent acc
         // earth-frame angle rates
         dx_state.segment(6,3) = caelus_fdm::angularVelocity2eulerRate(state)*wb;
         // body-frame angular acceleration
         dx_state.segment(9,3)  = total_momenta; // external torques
-        // dx_state.segment(9,3) -= wb.cross( m_I*wb.eval() ); // account for frame dependent ang acc
-        // dx_state.segment(9,3)  = m_I.colPivHouseholderQr().solve(dx_state.segment(9,3).eval()); // inertia matrix into account
+        dx_state.segment(9,3) -= wb.cross( this->moment_of_inertia*wb.eval() ); // account for frame dependent ang acc
+        dx_state.segment(9,3)  = this->moment_of_inertia.colPivHouseholderQr().solve(dx_state.segment(9,3).eval()); // inertia matrix into account
+
+        // Remove numerical noise < 1e-7
+        for (auto i = 0; i < dx_state.size(); i++)
+            dx_state[i] = fabs(dx_state[i]) < 1e-7 ? 0 : dx_state[i];
     }
 
     void integration_step(boost::chrono::microseconds us) {
@@ -87,11 +110,10 @@ protected:
             [this, dt, us] (const Eigen::VectorXd & x, Eigen::VectorXd &dx, const double t) -> void
             {
                 this->step_dynamics(us, x, dx);
-                this->dx_state = dx;
             },
             this->state,
-            0, // Simulation time here in milliseconds?
-            this->state,
+            this->dx_state,
+            this->clock.get_current_time_us().count() / 1000, // Simulation time here in milliseconds?
             dt
         );
     }
@@ -106,13 +128,15 @@ protected:
 
 public:
 
-    DynamicObject(DroneConfig config) : 
+    DynamicObject(DroneConfig config, Clock& clock) : 
         weight_force_m(Weight{config, G_FORCE}),
         fixed_wing_thrust_m(ThrustFixedWing{config}),
         quadrotor_thrust_m(ThrustQuadrotor{config}),
-        hor_flight_aero_force_m(Aerodynamics{config}) {
+        hor_flight_aero_force_m(Aerodynamics{config}),
+        clock(clock) {
             this->initialise_state();
             this->initialise_dx_state();
+            this->moment_of_inertia = config.J;
         };
 
     ~DynamicObject() {};

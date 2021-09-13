@@ -1,7 +1,7 @@
 #ifndef __WEIGHTFM_EXTENSION_H__
 #define __WEIGHTFM_EXTENSION_H__
 
-#include <ForceModels/Weight.h>
+#include "../ForceModels/Weight.h"
 #include "../Containers/DroneConfig.h"
 
 class Weight : public caelus_fdm::Weight {

@@ -10,10 +10,10 @@ class Sensors {
 public:
     ~Sensors() {};
     // State getters
-    virtual Eigen::Vector3d get_body_frame_origin() = 0;
+    virtual Eigen::Vector3d get_earth_frame_position() = 0;
     virtual Eigen::Vector3d get_body_frame_velocity() = 0;
-    virtual Eigen::Vector3d get_attitude() = 0;
-    virtual Eigen::Vector3d get_gyro() = 0;
+    virtual Eigen::Vector3d get_earth_frame_attitude() = 0;
+    virtual Eigen::Vector3d get_body_frame_gyro() = 0;
     // Dx state getters
     virtual Eigen::Vector3d get_earth_frame_velocity() = 0;
     virtual Eigen::Vector3d get_body_frame_acceleration() = 0;

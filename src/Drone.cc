@@ -1,7 +1,7 @@
 #include "Drone.h"
 #include "DroneSensors.h"
-
 #include "Logging/ConsoleLogger.h"
+#include "Helpers/rotationMatrix.h"
 
 // #define HIL_ACTUATOR_CONTROLS_VERBOSE
 
@@ -12,20 +12,9 @@ DroneConfig config_from_file_path(char* path) {
     return conf;
 }
 
-void pp_state(const Eigen::VectorXd state) {
-    double s[12] = {0};
-    for (int i = 0; i < 12; i++) s[i] = state.data()[i];
-    std::cout << "<==========" << std::endl;
-    std::cout << "X:" << s[0] << ", Y:" << s[1] << ", Z:" << s[2] << std::endl; 
-    std::cout << "Xdot: " << s[3] << ", Ydot: " << s[4] << ", Zdot: " << s[5] << std::endl;
-    std::cout << "Phi:" << s[6] << ", Theta:" << s[7] << ", Psy:" << s[8] << std::endl; 
-    std::cout << "Phidot:" << s[9] << ", Thetadot:" << s[10] << ", Psydot:" << s[11] << std::endl; 
-    std::cout << "==========>" << std::endl;
-}
-
-Drone::Drone(char* config_file, MAVLinkMessageRelay& connection) : 
+Drone::Drone(char* config_file, MAVLinkMessageRelay& connection, Clock& clock) : 
     MAVLinkSystem::MAVLinkSystem(1, 1),
-    DynamicObject::DynamicObject(config_from_file_path(config_file)),
+    DynamicObject::DynamicObject(config_from_file_path(config_file), clock),
     config(config_from_file_path(config_file)),
     connection(connection)
     {
@@ -43,9 +32,35 @@ void Drone::_setup_drone() {
         { return this->vtol_propellers.control(dt); });
 }
 
+void Drone::fake_ground_transform(boost::chrono::microseconds us) {
+    double dt = (us.count() / 1000.0) / 1000.0;
+    Eigen::Vector3d position = this->get_sensors().get_earth_frame_position(); // NED or ENU?
+    Eigen::Vector3d velocity = this->get_sensors().get_earth_frame_velocity(); // NED or ENU?
+    Eigen::Vector3d acceleration = caelus_fdm::body2earth(this->state) * this->get_sensors().get_body_frame_acceleration();
+
+    std::cout << "Position: \n" << position << std::endl;
+    std::cout << "Velocity: \n" << velocity << std::endl;
+    std::cout << "Acceleration: \n" << acceleration << std::endl;
+
+    if (position[2] >= this->ground_height - 0.001 && velocity[2] + acceleration[2] * dt <= 0.0) {
+        printf("Grounded!\n");
+        this->state[2] = 0;
+        // Body frame velocity
+        this->state.segment(3, 3) = Eigen::VectorXd::Zero(3);
+        // Body frame acc
+        this->dx_state.segment(3, 3) = Eigen::VectorXd::Zero(3);
+        this->dx_state[5] = G_FORCE;
+        // Rotation rate
+        this->state.segment(9, 3) = Eigen::VectorXd::Zero(3);
+        // Orientation
+        this->state.segment(6, 3) = Eigen::VectorXd::Zero(3);
+    }
+}
 void Drone::update(boost::chrono::microseconds us) {
     MAVLinkSystem::update(us);
     DynamicObject::update(us);
+    pp_state(this->state);
+    this->fake_ground_transform(us);
     this->_process_mavlink_messages();
     this->_publish_state(us);
 }
@@ -80,19 +95,17 @@ void Drone::_publish_state(boost::chrono::microseconds us)
     if (!this->connection.connection_open()) return;
     if (!(this->should_reply_lockstep || this->hil_actuator_controls_msg_n < 300)) return;
 
-    // TODO: move time computation up a layer
-    this->time += us;
     this->_publish_hil_gps();
     this->_publish_hil_sensor();
     this->should_reply_lockstep = false;
 
     bool should_send_autopilot_telemetry = 
-        (this->time - this->last_autopilot_telemetry).count()
+        (this->clock.get_current_time_us() - this->last_autopilot_telemetry).count()
         > this->hil_state_quaternion_message_frequency;
     
     if (!should_send_autopilot_telemetry) return;
     
-    this->last_autopilot_telemetry = this->time;
+    this->last_autopilot_telemetry = this->clock.get_current_time_us();
     
     this->_publish_hil_state_quaternion();
 
@@ -191,7 +204,7 @@ Sensors& Drone::get_sensors() {
 #pragma mark DroneStateEncoder
 
 uint64_t Drone::get_sim_time() {
-    return this->time.count();
+    return this->clock.get_current_time_us().count();
 }
 
 uint8_t Drone::get_mav_mode() {

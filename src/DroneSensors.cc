@@ -1,10 +1,10 @@
 #include "DroneSensors.h"
-#include <EquationsOfMotion/rotationMatrix.h>
 #include "Interfaces/DynamicObject.h"
 #include "DataStructures/LatLonAlt.h"
 #include "Helpers/baro_utils.h"
 #include "Helpers/gps_utils.h"
 #include "Helpers/magnetic_field_lookup.h"
+#include "Helpers/rotationMatrix.h"
 
 #define DEG_TO_RAD (M_PI / 180.0)
 #define RAD_TO_DEG (180.0 / M_PI)
@@ -24,7 +24,7 @@ DroneSensors::DroneSensors(DynamicObject& drone, LatLonAlt gps_origin) :
 /**
  * Body frame origin (x,y,z) in NED with respect to earth frame
  */
-Eigen::Vector3d DroneSensors::get_body_frame_origin() {
+Eigen::Vector3d DroneSensors::get_earth_frame_position() {
     return this->drone.get_vector_state().segment(0,3);
 }
 
@@ -32,15 +32,11 @@ Eigen::Vector3d DroneSensors::get_body_frame_velocity() {
     return this->drone.get_vector_state().segment(3,3);
 }
 
-Eigen::Vector3d DroneSensors::get_attitude() {
+Eigen::Vector3d DroneSensors::get_earth_frame_attitude() {
     return this->drone.get_vector_state().segment(6,3);
 }
 
-/**
- * NED body-frame gyroscope velocity in rad/s
- * returns: roll, pitch, yaw (ɸ. , θ. , ѱ.)
- */
-Eigen::Vector3d DroneSensors::get_gyro() {
+Eigen::Vector3d DroneSensors::get_body_frame_gyro() {
     return this->drone.get_vector_state().segment(9,3);
 }
 
@@ -50,10 +46,6 @@ Eigen::Vector3d DroneSensors::get_earth_frame_velocity() {
     return this->drone.get_vector_dx_state().segment(0,3);
 }
 
-/**
- * NED Body-frame acceleration in m/s**2
- * returns: ẍ , ÿ , z̈
- */
 Eigen::Vector3d DroneSensors::get_body_frame_acceleration() {
     return this->drone.get_vector_dx_state().segment(3,3);
 }
@@ -106,12 +98,12 @@ GPSData DroneSensors::get_gps_data() {
 }
 
 uint16_t DroneSensors::get_yaw_wrt_earth_north() {
-    Eigen::Vector3d attitude = this->get_attitude();
+    Eigen::Vector3d attitude = this->get_earth_frame_attitude();
     return (static_cast<int>(RAD_TO_DEG*attitude[2]) + 1) % 361;
 }
 
 uint16_t DroneSensors::get_course_over_ground() {
-    Eigen::VectorXd xyz_dot = this->get_body_frame_velocity();
+    Eigen::VectorXd xyz_dot = this->get_earth_frame_velocity();
     // Maybe convert xyz to earth frame?
     return (DEG_TO_RAD * atan2(xyz_dot[0], xyz_dot[1])) * 100; // Deg => cDeg
 }
@@ -153,7 +145,6 @@ LatLonAlt DroneSensors::get_lat_lon_alt() {
     LatLonAlt lLa;
 
     Eigen::VectorXd state = this->drone.get_vector_state();
-
     double lat_lon_alt[3] = {0};
 
     ned_to_ecef(

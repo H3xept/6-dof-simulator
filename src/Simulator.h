@@ -8,6 +8,7 @@
 #include "Interfaces/Environment.h"
 #include "Interfaces/MAVLinkMessageRelay.h"
 #include "Interfaces/MAVLinkMessageHandler.h"
+#include "Interfaces/Clock.h"
 
 #define SIMULATION_STARTED "Simulation started."
 #define SIMULATION_PAUSED "Simulation paused."
@@ -29,7 +30,8 @@ struct SimulatorConfig {
 class Simulator : 
     public Environment,
     public PrettyPrintable,
-    public MAVLinkMessageHandler {
+    public MAVLinkMessageHandler,
+    public Clock {
 private:
     SimulatorConfig config;
     MAVLinkMessageRelay& message_relay;
@@ -59,6 +61,8 @@ public:
     void start() override;
     void pause() override;
     void resume() override;
+
+    boost::chrono::microseconds get_current_time_us() override;
 };
 
 #endif // __SIMULATOR_H__

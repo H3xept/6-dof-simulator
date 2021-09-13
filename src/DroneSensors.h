@@ -17,10 +17,10 @@ protected:
 public:
     DroneSensors(DynamicObject& drone, LatLonAlt gps_origin);
     ~DroneSensors() {};
-    Eigen::Vector3d get_body_frame_origin() override;
+    Eigen::Vector3d get_earth_frame_position() override;
     Eigen::Vector3d get_body_frame_velocity() override;
-    Eigen::Vector3d get_attitude() override;
-    Eigen::Vector3d get_gyro() override;
+    Eigen::Vector3d get_earth_frame_attitude() override;
+    Eigen::Vector3d get_body_frame_gyro() override;
     Eigen::Vector3d get_earth_frame_velocity() override;
     Eigen::Vector3d get_body_frame_acceleration() override;
     Eigen::Vector3d get_earth_frame_angle_rates() override;

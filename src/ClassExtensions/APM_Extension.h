@@ -1,7 +1,7 @@
 #ifndef __APM_EXTENSION_H__
 #define __APM_EXTENSION_H__
 
-#include <EquationsOfMotion/FixedWingEOM.h>
+#include "../ForceModels/Aerodynamics.h"
 
 /**
  * 

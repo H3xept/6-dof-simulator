@@ -17,7 +17,7 @@ int main(int argc, char const *argv[])
     boost::thread link_thread = boost::thread(boost::bind(&boost::asio::io_service::run, &service));
     std::unique_ptr<Simulator> s(new Simulator({4000, 1, true}, handler));
     
-    Drone d{"../drone_models/fixed_wing", handler};
+    Drone d{"../drone_models/fixed_wing", handler, *s};
     s->add_environment_object(d);
     s->start();
     

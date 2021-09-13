@@ -37,11 +37,6 @@ static Eigen::VectorXd cached_magfield = Eigen::VectorXd::Zero(3);
 
 Eigen::VectorXd magnetic_field_for_latlonalt(LatLonAlt lat_lon_alt) {
     try {
-        std::cout << "latlonalt to calculate magfield from "<<std::endl;
-        std::cout << lat_lon_alt.latitude_deg << std::endl;
-        std::cout << lat_lon_alt.longitude_deg << std::endl;
-        std::cout << lat_lon_alt.altitude_mm << std::endl;
-
         if (cached_magfield.isZero()) {
             URL u(boost::str((boost::format(MAG_LOOKUP_ENDPOINT) % 
                     (lat_lon_alt.latitude_deg) % // LatLon are converted to int form by multiplying by 1.e7 in DroneStateEncode 

@@ -1,7 +1,7 @@
 #ifndef __THRUSTQUADROTOR_EXTENSION_H__
 #define __THRUSTQUADROTOR_EXTENSION_H__
 
-#include <ForceModels/ThrustQuadrotor.h>
+#include "../ForceModels/ThrustQuadrotor.h"
 #include "../Containers/DroneConfig.h"
 
 class ThrustQuadrotor : public caelus_fdm::ThrustQuadrotor {

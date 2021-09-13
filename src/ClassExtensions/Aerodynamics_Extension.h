@@ -1,7 +1,7 @@
 #ifndef __AERODYNAMICS_EXTENSION_H__
 #define __AERODYNAMICS_EXTENSION_H__
 
-#include <ForceModels/Aerodynamics.h>
+#include "../ForceModels/Aerodynamics.h"
 #include "../Containers/DroneConfig.h"
 
 class Aerodynamics : public caelus_fdm::Aerodynamics {
