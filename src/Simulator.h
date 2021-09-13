@@ -30,14 +30,12 @@ struct SimulatorConfig {
 class Simulator : 
     public Environment,
     public PrettyPrintable,
-    public MAVLinkMessageHandler,
-    public Clock {
+    public MAVLinkMessageHandler
+    {
 private:
     SimulatorConfig config;
     MAVLinkMessageRelay& message_relay;
     boost::lockfree::queue<mavlink_message_t, boost::lockfree::capacity<50>> message_queue;
-    
-    boost::chrono::microseconds simulation_time{0};
 
     bool should_advance_time = false;
     bool should_shutdown = false;
@@ -45,6 +43,7 @@ private:
     void _process_mavlink_message(mavlink_message_t m);
     void _process_mavlink_messages();
 public:   
+    Clock simulation_clock;
     std::unique_ptr<Logger> logger;
     
     Simulator(SimulatorConfig c, MAVLinkMessageRelay& message_relay);
@@ -61,8 +60,6 @@ public:
     void start() override;
     void pause() override;
     void resume() override;
-
-    boost::chrono::microseconds get_current_time_us() override;
 };
 
 #endif // __SIMULATOR_H__

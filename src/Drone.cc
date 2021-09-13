@@ -34,16 +34,11 @@ void Drone::_setup_drone() {
 
 void Drone::fake_ground_transform(boost::chrono::microseconds us) {
     double dt = (us.count() / 1000.0) / 1000.0;
-    Eigen::Vector3d position = this->get_sensors().get_earth_frame_position(); // NED or ENU?
-    Eigen::Vector3d velocity = this->get_sensors().get_earth_frame_velocity(); // NED or ENU?
+    Eigen::Vector3d position = this->get_sensors().get_earth_frame_position(); // NED
+    Eigen::Vector3d velocity = this->get_sensors().get_earth_frame_velocity(); // NED
     Eigen::Vector3d acceleration = caelus_fdm::body2earth(this->state) * this->get_sensors().get_body_frame_acceleration();
 
-    std::cout << "Position: \n" << position << std::endl;
-    std::cout << "Velocity: \n" << velocity << std::endl;
-    std::cout << "Acceleration: \n" << acceleration << std::endl;
-
-    if (position[2] >= this->ground_height - 0.001 && velocity[2] + acceleration[2] * dt <= 0.0) {
-        printf("Grounded!\n");
+    if (position[2] >= (this->ground_height - 0.001) && velocity[2] + acceleration[2] * dt >= 0.0) {
         this->state[2] = 0;
         // Body frame velocity
         this->state.segment(3, 3) = Eigen::VectorXd::Zero(3);
@@ -59,7 +54,6 @@ void Drone::fake_ground_transform(boost::chrono::microseconds us) {
 void Drone::update(boost::chrono::microseconds us) {
     MAVLinkSystem::update(us);
     DynamicObject::update(us);
-    pp_state(this->state);
     this->fake_ground_transform(us);
     this->_process_mavlink_messages();
     this->_publish_state(us);
@@ -95,6 +89,12 @@ void Drone::_publish_state(boost::chrono::microseconds us)
     if (!this->connection.connection_open()) return;
     if (!(this->should_reply_lockstep || this->hil_actuator_controls_msg_n < 300)) return;
 
+    this->clock.unlock_time();
+
+    if (this->sys_time_throttle_counter++ % 1000) {
+        this->_publish_system_time();
+    }
+
     this->_publish_hil_gps();
     this->_publish_hil_sensor();
     this->should_reply_lockstep = false;
@@ -109,9 +109,6 @@ void Drone::_publish_state(boost::chrono::microseconds us)
     
     this->_publish_hil_state_quaternion();
 
-    if (this->sys_time_throttle_counter++ % 1000) {
-        this->_publish_system_time();
-    }
 }
 
 /**

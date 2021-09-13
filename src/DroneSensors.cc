@@ -130,7 +130,7 @@ uint16_t DroneSensors::get_true_wind_speed() {
     Eigen::Vector3d ground_speed_vec = this->get_absolute_ground_speed();
 
     // Environment wind is assumed to be in m/s -- cm/s is required.
-    Eigen::Vector3d environment_wind = this->get_environment_wind() * 100; 
+    Eigen::Vector3d environment_wind = this->get_environment_wind(); 
     Eigen::Vector3d cumulative_wind = (ground_speed_vec + environment_wind) * -1;
     // TODO: make sure no rotation is required
     return cumulative_wind.norm();
