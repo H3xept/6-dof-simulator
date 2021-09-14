@@ -2,13 +2,15 @@
 #include "Logging/ConsoleLogger.h"
 #include "Simulator.h"
 #include "Drone.h"
+#include "StandaloneDrone.h"
 #include <boost/thread.hpp>
 #include "Sockets/MAVLinkConnectionHandler.h"
 #include <Eigen/Eigen>
 
-int main(int argc, char const *argv[])
+int main()
 {
 
+    const char* fixed_wing_config = "../drone_models/fixed_wing";
     ConsoleLogger* cl = ConsoleLogger::shared_instance();
     cl->set_debug(false);
 
@@ -17,7 +19,7 @@ int main(int argc, char const *argv[])
     boost::thread link_thread = boost::thread(boost::bind(&boost::asio::io_service::run, &service));
     std::unique_ptr<Simulator> s(new Simulator({4000, 1, true}, handler));
     
-    Drone d{"../drone_models/fixed_wing", handler, s->simulation_clock};
+    StandaloneDrone d{fixed_wing_config, s->simulation_clock};
     s->add_environment_object(d);
     s->start();
     

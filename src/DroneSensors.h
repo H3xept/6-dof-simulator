@@ -6,10 +6,6 @@
 #include "Interfaces/TimeHandler.h"
 
 class DroneSensors : public Sensors {
-private:
-    uint32_t update_step = 0;
-    // Send gps update every n simulation updates
-    uint8_t gps_update_throttle = 2;
     
 protected:
     DynamicObject& drone;

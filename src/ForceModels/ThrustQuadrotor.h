@@ -31,7 +31,7 @@ namespace caelus_fdm {
     public:
 
         ThrustQuadrotor(double b, double d, double l, function<Eigen::VectorXd(double)> controller) :
-                BaseFM(), m_b(b), m_d(d), m_l(l), m_controller(move(controller))
+                BaseFM(), m_l(l), m_controller(move(controller)), m_b(b), m_d(d)
         {
         }
 
@@ -79,6 +79,7 @@ namespace caelus_fdm {
 
         int setController(function<Eigen::VectorXd(double)> controller) {
             this->m_controller = controller;
+            return 0;
         }
     };
 

@@ -55,4 +55,11 @@ struct DroneConfig : public PrettyPrintable {
     }
 };
 
+static DroneConfig config_from_file_path(const char* path) {
+    DroneConfig conf;
+    std::ifstream fin(path);
+    fin >> conf;
+    return conf;
+}
+
 #endif // __DRONECONFIG_H__

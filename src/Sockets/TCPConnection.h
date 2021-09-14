@@ -39,7 +39,7 @@ public:
         );
     }
 
-    void handle_read(const boost::system::error_code& err, size_t bytes_transferred) {
+    void handle_read(__attribute__((unused)) const boost::system::error_code& err, size_t bytes_transferred) {
         if (bytes_transferred != 0) this->data_recv_delegate.receive_data((const char*)&this->recv_buffer, bytes_transferred);
         start_reading();
     }

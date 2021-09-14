@@ -148,7 +148,7 @@ private:
             vx,
             vy,
             vz,
-            true_airspeed,
+            indicated_airspeed,
             true_airspeed,
             x_acc,
             y_acc,
@@ -205,10 +205,8 @@ public:
 
     mavlink_message_t hil_sensor_msg(uint8_t system_id, uint8_t component_id) {
         Sensors& sensors = this->get_sensors();
-        mavlink_message_t msg;
         
         LatLonAlt lat_lon_alt = sensors.get_lat_lon_alt();
-        Eigen::Vector3d drone_x_y_z = sensors.get_earth_frame_position();
         // m/s**2
         Eigen::Vector3d body_frame_acc = sensors.get_body_frame_acceleration();
         // rad/s
@@ -234,7 +232,7 @@ public:
             abs_pressure + randomNoise(this->noise_Prs) / 100,
             diff_pressure + randomNoise(this->noise_Prs) / 100,
             // ENU to NED
-            lat_lon_alt.altitude_mm + randomNoise(this->noise_Prs) , 
+            -lat_lon_alt.altitude_mm / 1000 + randomNoise(this->noise_Prs) , 
             temperature + randomNoise(this->noise_Prs)
         );
     }

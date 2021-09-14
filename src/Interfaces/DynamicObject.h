@@ -21,7 +21,7 @@ typedef boost::numeric::odeint::runge_kutta_dopri5<Eigen::VectorXd,double,Eigen:
 #define ZEROVEC(x) Eigen::VectorXd::Zero(x)
 
 
-static void pp_state(const Eigen::VectorXd state) {
+__attribute__((unused)) static void pp_state(const Eigen::VectorXd state) {
     double s[12] = {0};
     for (int i = 0; i < 12; i++) s[i] = state.data()[i];
     std::cout << "<==========" << std::endl;
@@ -79,8 +79,8 @@ protected:
         Eigen::VectorXd& dx_state) {
         
         Eigen::Vector3d total_forces = this->get_forces();
-        Eigen::Vector3d total_momenta = this->get_momenta();
-    
+        Eigen::Vector3d total_momenta = this->get_moements();
+
         Eigen::Vector3d Vb = state.segment(3,3);
         Eigen::Vector3d wb = state.segment(9,3);
 
@@ -107,13 +107,13 @@ protected:
         // Integrate using ODESolver
         double dt = us.count() / 1000000.0; // Microseconds to seconds
         this->dynamics_solver.do_step(
-            [this, dt, us] (const Eigen::VectorXd & x, Eigen::VectorXd &dx, const double t) -> void
+            [this, us] (const Eigen::VectorXd & x, Eigen::VectorXd &dx, __attribute__((unused)) const double t ) -> void
             {
                 this->step_dynamics(us, x, dx);
             },
             this->state,
             this->dx_state,
-            this->clock.get_current_time_us().count() / 1000, // Simulation time here in milliseconds?
+            this->clock.get_current_time_us().count() / 1000000, // Simulation time here in milliseconds?
             dt
         );
     }
@@ -152,12 +152,12 @@ public:
         return fixed_wing_force + quadrotor_force + aero_force + weight_force;
     }
 
-    Eigen::Vector3d get_momenta() {
-        Eigen::Vector3d fixed_wing_momentum = this->compute_fixed_wing_dynamics ? this->fixed_wing_thrust_m.getM() : ZEROVEC(3);
-        Eigen::Vector3d quadrotor_momentum = this->compute_quadrotor_dynamics ? this->quadrotor_thrust_m.getM() : ZEROVEC(3);
-        Eigen::Vector3d aero_momentum = this->compute_aero_dynamics ? this->hor_flight_aero_force_m.getM() : ZEROVEC(3);
-        Eigen::Vector3d weight_momentum = this->compute_weight_dynamics ? this->weight_force_m.getM() : ZEROVEC(3);
-        return fixed_wing_momentum + quadrotor_momentum + aero_momentum + weight_momentum;
+    Eigen::Vector3d get_moements() {
+        Eigen::Vector3d fixed_wing_moment = this->compute_fixed_wing_dynamics ? this->fixed_wing_thrust_m.getM() : ZEROVEC(3);
+        Eigen::Vector3d quadrotor_moment = this->compute_quadrotor_dynamics ? this->quadrotor_thrust_m.getM() : ZEROVEC(3);
+        Eigen::Vector3d aero_moment = this->compute_aero_dynamics ? this->hor_flight_aero_force_m.getM() : ZEROVEC(3);
+        Eigen::Vector3d weight_moment = this->compute_weight_dynamics ? this->weight_force_m.getM() : ZEROVEC(3);
+        return fixed_wing_moment + quadrotor_moment + aero_moment + weight_moment;
     }
 
     void update(boost::chrono::microseconds us) override {

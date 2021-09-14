@@ -4,13 +4,11 @@
 #include <Eigen/Eigen>
 #include "Interfaces/AsyncDroneControl.h"
 
-#define AILERONS_N 2
-
 class Ailerons : public AsyncDroneControl {
 private:
-    Eigen::VectorXd _last_control{AILERONS_N};
+    Eigen::VectorXd _last_control;
 public:
-    Ailerons();
+    Ailerons(uint8_t ailerons_n);
     // [0] Left
     // [1] Right
     Eigen::VectorXd control(double dt) override;

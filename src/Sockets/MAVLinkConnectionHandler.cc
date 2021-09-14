@@ -12,7 +12,7 @@ MAVLinkConnectionHandler::MAVLinkConnectionHandler(io_service& service, Connecti
 MAVLinkConnectionHandler::~MAVLinkConnectionHandler() {}
 
 bool MAVLinkConnectionHandler::parse_mavlink_message(const char* buff, size_t len, mavlink_message_t& msg, mavlink_status_t& status) {
-    for (int i = 0; i < len; i++) {
+    for (auto i = 0; i < len; i++) {
         if (mavlink_parse_char(MAVLINK_COMM_0,buff[i], &msg, &status)) return true;
     }
     return false;
@@ -36,7 +36,7 @@ bool MAVLinkConnectionHandler::received_message(mavlink_message_t m) {
     for (auto h : this->message_handlers) {
         h->handle_mavlink_message(m);
     }
-        
+    return true;
 }
 
 void MAVLinkConnectionHandler::enqueue_message(const mavlink_message_t m) {

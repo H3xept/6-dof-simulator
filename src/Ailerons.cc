@@ -1,7 +1,7 @@
 #include "Ailerons.h"
 
-Ailerons::Ailerons() {
-    for (int i = 0; i < AILERONS_N; i++) this->_last_control[i] = 0;
+Ailerons::Ailerons(uint8_t ailerons_n) : _last_control(ailerons_n) {
+    for (int i = 0; i < ailerons_n; i++) this->_last_control[i] = 0;
 }
 
 Eigen::VectorXd Ailerons::control(double dt) {

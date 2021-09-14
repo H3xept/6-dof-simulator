@@ -27,8 +27,8 @@ public:
         system_id(system_id), 
         component_id(component_id) {}
     
-    virtual double get_heartbeat_interval() { return this->heartbeat_interval; }
-    virtual void set_heartbeat_interval(double interval) { this->heartbeat_interval = interval; }
+    virtual double get_heartbeat_interval() override { return this->heartbeat_interval; }
+    virtual void set_heartbeat_interval(double interval) override { this->heartbeat_interval = interval; }
 
     void update(boost::chrono::microseconds us) override {
         auto now = std::chrono::steady_clock::now();

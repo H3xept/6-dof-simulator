@@ -5,14 +5,7 @@
 
 // #define HIL_ACTUATOR_CONTROLS_VERBOSE
 
-DroneConfig config_from_file_path(char* path) {
-    DroneConfig conf;
-    std::ifstream fin(path);
-    fin >> conf;
-    return conf;
-}
-
-Drone::Drone(char* config_file, MAVLinkMessageRelay& connection, Clock& clock) : 
+Drone::Drone(const char* config_file, MAVLinkMessageRelay& connection, Clock& clock) : 
     MAVLinkSystem::MAVLinkSystem(1, 1),
     DynamicObject::DynamicObject(config_from_file_path(config_file), clock),
     config(config_from_file_path(config_file)),
@@ -38,11 +31,11 @@ void Drone::fake_ground_transform(boost::chrono::microseconds us) {
     Eigen::Vector3d velocity = this->get_sensors().get_earth_frame_velocity(); // NED
     Eigen::Vector3d acceleration = caelus_fdm::body2earth(this->state) * this->get_sensors().get_body_frame_acceleration();
 
-    if (position[2] >= (this->ground_height - 0.001) && velocity[2] + acceleration[2] * dt >= 0.0) {
+    if (position[2] >= this->ground_height && velocity[2] + acceleration[2] * dt >= 0.0) {
         this->state[2] = 0;
         // Body frame velocity
         this->state.segment(3, 3) = Eigen::VectorXd::Zero(3);
-        // Body frame acc
+        // // Body frame acc
         this->dx_state.segment(3, 3) = Eigen::VectorXd::Zero(3);
         this->dx_state[5] = G_FORCE;
         // Rotation rate
