@@ -29,8 +29,8 @@ protected:
 
 public:
     StandaloneDrone(const char* config_file, Clock& clock) :
-        DynamicObject(config_from_file_path(config_file), clock)
-        config(config_from_file_path(config_file)),
+        DynamicObject(config_from_file_path(config_file), clock),
+        config(config_from_file_path(config_file))
         { this->_setup_drone(); };
     
     void update(boost::chrono::microseconds us) override;

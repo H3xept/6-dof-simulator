@@ -3,14 +3,13 @@
 #include "Simulator.h"
 #include "Logging/ConsoleLogger.h"
 
-Simulator::Simulator(SimulatorConfig c, MAVLinkMessageRelay& message_relay) : 
+Simulator::Simulator(SimulatorConfig c) : 
     config(c),
-    message_relay(message_relay),
     logger(ConsoleLogger::shared_instance())
 {
     // this->message_relay.add_message_handler(this);
     this->simulation_clock.set_timestep(this->config.timestep_us);
-} 
+}
 
 Simulator::~Simulator() {}
 

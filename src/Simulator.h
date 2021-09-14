@@ -34,7 +34,6 @@ class Simulator :
     {
 private:
     SimulatorConfig config;
-    MAVLinkMessageRelay& message_relay;
     boost::lockfree::queue<mavlink_message_t, boost::lockfree::capacity<50>> message_queue;
 
     bool should_advance_time = false;
@@ -46,7 +45,7 @@ public:
     Clock simulation_clock;
     std::unique_ptr<Logger> logger;
     
-    Simulator(SimulatorConfig c, MAVLinkMessageRelay& message_relay);
+    Simulator(SimulatorConfig c);
     ~Simulator();
 
     SimulatorConfig get_config();
