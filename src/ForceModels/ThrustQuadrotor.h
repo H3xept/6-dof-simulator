@@ -50,7 +50,6 @@ namespace caelus_fdm {
 
         int computeF(const double &t, const State &x) override
         {
-
             // set force
             m_F.resize(3);
             m_F[0] = 0.;

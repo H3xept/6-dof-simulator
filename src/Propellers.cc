@@ -38,10 +38,15 @@ Eigen::VectorXd Propellers::control(double dt) {
     double battery_voltage = 4.0;
 
     Eigen::VectorXd ret{this->propeller_n};
-    for (uint i = 0; i < this->propeller_n; i++){
-        ret[i] = 2 * ((-Mt * Me / Rs) + sqrt(pow((Mt * Me / Rs), 2) - 4 * Km * -Mt / Rs * (abs(this->_last_control[0]) * battery_voltage))) / (2 * Km);
-    }
+    double omega = sqrt(9.81/Kt/4.);
+
+    // for (uint i = 0; i < this->propeller_n; i++){
+    //     ret[i] = ((-Mt * Me / Rs) + sqrt(pow((Mt * Me / Rs), 2) - 4 * Km * -Mt / Rs * (abs(this->_last_control[0]) * battery_voltage))) / (2 * Km);
+    // }
         
+    for (uint i = 0; i < this->propeller_n; i++){
+        ret[i] = omega * this->_last_control[i];
+    }
 
     // printf("Control for %d rotors is:\n", this->propeller_n);
     // printf("\t");
