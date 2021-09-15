@@ -1,8 +1,16 @@
 #include "StandaloneDrone.h"
 
 void StandaloneDrone::update(boost::chrono::microseconds us) {
+    this->mix_controls(us);
     DynamicObject::update(us);
-    pp_state(this->state);
+    this->controller.update(us);
+    this->clock.unlock_time();
+}
+
+void StandaloneDrone::mix_controls(boost::chrono::microseconds us) {
+    Eigen::VectorXd current_pwm = this->controller.control(0);
+    printf("Control is %f %f %f %f\n", current_pwm[0], current_pwm[1], current_pwm[2], current_pwm[3]);
+    this->vtol_propellers.set_control(current_pwm.segment(0,4));
 }
 
 void StandaloneDrone::fake_ground_transform(boost::chrono::microseconds us) {

@@ -33,6 +33,8 @@ class Simulator :
     public MAVLinkMessageHandler
     {
 private:
+    boost::chrono::microseconds stop_after_us{0};
+
     SimulatorConfig config;
     boost::lockfree::queue<mavlink_message_t, boost::lockfree::capacity<50>> message_queue;
 
@@ -59,6 +61,11 @@ public:
     void start() override;
     void pause() override;
     void resume() override;
+
+    void start(boost::chrono::microseconds stop_after) {
+        this->stop_after_us = stop_after;
+        this->start();
+    }
 };
 
 #endif // __SIMULATOR_H__

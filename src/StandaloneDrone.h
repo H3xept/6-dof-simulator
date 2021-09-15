@@ -2,6 +2,7 @@
 #define __STANDALONEDRONE_H__
 
 #include "Interfaces/DynamicObject.h"
+#include "Controllers/DroneController.h"
 #include "Propellers.h"
 #include "Ailerons.h"
 #include "DroneSensors.h"
@@ -15,6 +16,8 @@ protected:
     Propellers thrust_propeller{1};
     Ailerons elevons{2};
 
+    DroneController& controller;
+
 // Glasgow LatLon Height
 #define INITIAL_LAT 55.8609825
 #define INITIAL_LON -4.2488787
@@ -26,15 +29,16 @@ protected:
 
     void _setup_drone();
     void fake_ground_transform(boost::chrono::microseconds us);
-
+    void mix_controls(boost::chrono::microseconds us);
+    
 public:
-    StandaloneDrone(const char* config_file, Clock& clock) :
+    StandaloneDrone(const char* config_file, Clock& clock, DroneController& controller) :
         DynamicObject(config_from_file_path(config_file), clock),
-        config(config_from_file_path(config_file))
+        config(config_from_file_path(config_file)),
+        controller(controller)
         { this->_setup_drone(); };
     
     void update(boost::chrono::microseconds us) override;
-
 };
 
 #endif // __STANDALONEDRONE_H__

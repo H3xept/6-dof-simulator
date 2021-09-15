@@ -22,6 +22,13 @@ void Simulator::add_environment_object(EnvironmentObject& e) {
 }
 
 void Simulator::update(boost::chrono::microseconds us) {
+    
+    if (this->simulation_clock.get_current_time_us() > this->stop_after_us && this->stop_after_us.count() != 0) {
+        printf("Simulation complete -- stopping after %lld us.\n", this->stop_after_us.count());
+        this->should_shutdown = true;
+        return;
+    }
+
     this->simulation_clock.step();
     this->_process_mavlink_messages();
     for (auto e : this->env_objects) {
@@ -39,7 +46,7 @@ void Simulator::start() {
         if (this->config.running_lockstep) {
             boost::chrono::microseconds time_increment = this->get_config().timestep_us;
             this->update(time_increment);
-            boost::this_thread::sleep_for(boost::chrono::microseconds(3000));
+            // boost::this_thread::sleep_for(boost::chrono::microseconds(3000));
         } else {
             printf("NON-LOCKSTEP NOT SUPPORTED\n");
         }
