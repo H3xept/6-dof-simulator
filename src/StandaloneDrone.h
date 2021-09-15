@@ -8,9 +8,12 @@
 #include "DroneSensors.h"
 #include "DataStructures/LatLonAlt.h"
 #include "Containers/DroneConfig.h"
+#include "Interfaces/DroneStateProcessor.h"
 
 class StandaloneDrone : public DynamicObject {
 protected:
+    DroneStateProcessor* drone_state_processor;
+
     DroneConfig config;
     Propellers vtol_propellers{4};
     Propellers thrust_propeller{1};
@@ -38,6 +41,10 @@ public:
         controller(controller)
         { this->_setup_drone(); };
     
+    void set_drone_state_processor(DroneStateProcessor& processor) {
+        this->drone_state_processor = &processor;
+    }
+
     void update(boost::chrono::microseconds us) override;
 };
 

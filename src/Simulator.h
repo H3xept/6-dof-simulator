@@ -9,6 +9,7 @@
 #include "Interfaces/MAVLinkMessageRelay.h"
 #include "Interfaces/MAVLinkMessageHandler.h"
 #include "Interfaces/Clock.h"
+#include "Interfaces/DroneStateProcessor.h"
 
 #define SIMULATION_STARTED "Simulation started."
 #define SIMULATION_PAUSED "Simulation paused."
@@ -30,7 +31,8 @@ struct SimulatorConfig {
 class Simulator : 
     public Environment,
     public PrettyPrintable,
-    public MAVLinkMessageHandler
+    public MAVLinkMessageHandler,
+    public DroneStateProcessor
     {
 private:
     boost::chrono::microseconds stop_after_us{0};
@@ -43,6 +45,9 @@ private:
 
     void _process_mavlink_message(mavlink_message_t m);
     void _process_mavlink_messages();
+
+    std::vector<DroneStateProcessor*> drone_state_processors;
+
 public:   
     Clock simulation_clock;
     std::unique_ptr<Logger> logger;
@@ -56,6 +61,9 @@ public:
     void handle_mavlink_message(mavlink_message_t m) override;
 
     void add_environment_object(EnvironmentObject& e) override;
+    void add_drone_state_processor(DroneStateProcessor* processor) {
+        this->drone_state_processors.push_back(processor);
+    }
 
     void update(boost::chrono::microseconds ms) override;
     void start() override;
@@ -65,6 +73,12 @@ public:
     void start(boost::chrono::microseconds stop_after) {
         this->stop_after_us = stop_after;
         this->start();
+    }
+
+    void new_drone_state(Eigen::VectorXd state, Eigen::VectorXd dx_state) override {
+        for (auto p : this->drone_state_processors) {
+            p->new_drone_state(state, dx_state);
+        }
     }
 };
 

@@ -3,13 +3,17 @@
 void StandaloneDrone::update(boost::chrono::microseconds us) {
     this->mix_controls(us);
     DynamicObject::update(us);
+    this->fake_ground_transform(us);
     this->controller.update(us);
     this->clock.unlock_time();
+    if (this->drone_state_processor != NULL) {
+        this->drone_state_processor->new_drone_state(this->state, this->dx_state);
+    }
 }
 
 void StandaloneDrone::mix_controls(boost::chrono::microseconds us) {
     Eigen::VectorXd current_pwm = this->controller.control(0);
-    printf("Control is %f %f %f %f\n", current_pwm[0], current_pwm[1], current_pwm[2], current_pwm[3]);
+    // printf("Control is %f %f %f %f\n", current_pwm[0], current_pwm[1], current_pwm[2], current_pwm[3]);
     this->vtol_propellers.set_control(current_pwm.segment(0,4));
 }
 

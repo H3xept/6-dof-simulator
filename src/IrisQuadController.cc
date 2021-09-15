@@ -6,9 +6,8 @@ Eigen::VectorXd IrisQuadController::none_controller(DroneConfig conf, boost::chr
 }
 
 Eigen::VectorXd IrisQuadController::hold_controller(DroneConfig conf, boost::chrono::microseconds t) {
-    double omega = sqrt(9.81/conf.b/4.);
     Eigen::VectorXd control{4};
-    for (auto i = 0; i < control.size(); i++) control[i] = omega;
+    for (auto i = 0; i < control.size(); i++) control[i] = 1;
     return control;
 }
 

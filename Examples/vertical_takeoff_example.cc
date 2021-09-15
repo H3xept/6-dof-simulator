@@ -2,6 +2,8 @@
 #include "../src/StandaloneDrone.h"
 #include "../src/Simulator.h"
 #include "../src/IrisQuadController.h"
+#include "../src/Logging/DroneStateLogger.h"
+
 #include <Eigen/Eigen>
 
 double sigmoid(double x) {
@@ -28,9 +30,13 @@ int main()
     IrisQuadController quadController{config_from_file_path(fixed_wing_config)};
     quadController.set_plan(plan);
 
+    DroneStateLogger dsLog;
+
     std::unique_ptr<Simulator> s(new Simulator({static_cast<long>(time_step_s * 1000000), 1, true}));
     StandaloneDrone d{fixed_wing_config, s->simulation_clock, quadController};
+    d.set_drone_state_processor(*s);
     s->add_environment_object(d);
+    s->add_drone_state_processor(&dsLog);
     s->start(quadController.get_total_plan_duration_us());
     
     return 0;
