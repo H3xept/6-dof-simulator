@@ -2,9 +2,8 @@
 #define __STANDALONEDRONE_H__
 
 #include "Interfaces/DynamicObject.h"
+#include "ESCs/FixedWingESC.h"
 #include "Controllers/DroneController.h"
-#include "Propellers.h"
-#include "Ailerons.h"
 #include "DroneSensors.h"
 #include "DataStructures/LatLonAlt.h"
 #include "Containers/DroneConfig.h"
@@ -15,10 +14,7 @@ protected:
     DroneStateProcessor* drone_state_processor;
 
     DroneConfig config;
-    Propellers vtol_propellers{4};
-    Propellers thrust_propeller{1};
-    Ailerons elevons{2};
-
+    FixedWingESC virtual_esc{config};
     DroneController& controller;
 
 // Glasgow LatLon Height

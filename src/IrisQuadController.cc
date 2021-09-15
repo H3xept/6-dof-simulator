@@ -2,11 +2,11 @@
 
 
 Eigen::VectorXd IrisQuadController::none_controller(DroneConfig conf, boost::chrono::microseconds t) {
-    return Eigen::VectorXd::Zero(4);
+    return Eigen::VectorXd::Zero(8);
 }
 
 Eigen::VectorXd IrisQuadController::hold_controller(DroneConfig conf, boost::chrono::microseconds t) {
-    Eigen::VectorXd control{4};
+    Eigen::VectorXd control{8};
     for (auto i = 0; i < control.size(); i++) control[i] = 1;
     return control;
 }

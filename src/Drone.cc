@@ -17,12 +17,12 @@ Drone::Drone(const char* config_file, MAVLinkMessageRelay& connection, Clock& cl
 
 void Drone::_setup_drone() {
     // Inject controllers into dynamics model
-    this->setControllerThrust([this] (double dt) -> Eigen::VectorXd
-        { return this->thrust_propellers.control(dt); });
-    this->setControllerAero([this] (double dt) -> Eigen::VectorXd
-        { return this->ailerons.control(dt); });
     this->setControllerVTOL([this] (double dt) -> Eigen::VectorXd
-        { return this->vtol_propellers.control(dt); });
+        { return this->virtual_esc.control(dt).segment(0,4); });
+    this->setControllerThrust([this] (double dt) -> Eigen::VectorXd
+        { return this->virtual_esc.control(dt).segment(4,2); });
+    this->setControllerAero([this] (double dt) -> Eigen::VectorXd
+        { return this->virtual_esc.control(dt).segment(6,2); });
 }
 
 void Drone::fake_ground_transform(boost::chrono::microseconds us) {
@@ -136,14 +136,6 @@ void Drone::_process_hil_actuator_controls(mavlink_message_t m) {
     mavlink_hil_actuator_controls_t controls;
     mavlink_msg_hil_actuator_controls_decode(&m, &controls);
     this->armed = (controls.mode & MAV_MODE_FLAG_SAFETY_ARMED) > 0;
-    //this->mav_mode = controls.mode;
-    
-    Eigen::VectorXd vtol_prop_controls{4};
-    for (int i = 0; i < 4; i++) vtol_prop_controls[i] = controls.controls[i];
-    Eigen::VectorXd ailerons_controls{2};
-    for (int i = 0; i < 2; i++) ailerons_controls[i] = controls.controls[4+i];
-    Eigen::VectorXd thrust_propeller_controls{1};
-    for (int i = 0; i < 1; i++) thrust_propeller_controls[i] = controls.controls[8+i];
 
 #ifdef HIL_ACTUATOR_CONTROLS_VERBOSE
     printf("HIL_ACTUATOR_CONTROLS:\n");
@@ -151,11 +143,10 @@ void Drone::_process_hil_actuator_controls(mavlink_message_t m) {
         printf("\tControl #%d: %f\n", i, controls.controls[i]);
     } printf("\n");
 #endif
+    Eigen::VectorXd vec_controls{8};
+    for (int i = 0; i < 8; i++) vec_controls[i] = controls.controls[i];
 
-    this->thrust_propellers.set_control(thrust_propeller_controls);
-    this->ailerons.set_control(ailerons_controls);
-    this->vtol_propellers.set_control(vtol_prop_controls);
-    
+    this->virtual_esc.set_control(vec_controls);
 }
 
 void Drone::_process_mavlink_message(mavlink_message_t m) {

@@ -14,7 +14,7 @@ void StandaloneDrone::update(boost::chrono::microseconds us) {
 void StandaloneDrone::mix_controls(boost::chrono::microseconds us) {
     Eigen::VectorXd current_pwm = this->controller.control(0);
     // printf("Control is %f %f %f %f\n", current_pwm[0], current_pwm[1], current_pwm[2], current_pwm[3]);
-    this->vtol_propellers.set_control(current_pwm.segment(0,4));
+    this->virtual_esc.set_control(current_pwm);
 }
 
 void StandaloneDrone::fake_ground_transform(boost::chrono::microseconds us) {
@@ -39,10 +39,10 @@ void StandaloneDrone::fake_ground_transform(boost::chrono::microseconds us) {
 
 void StandaloneDrone::_setup_drone() {
     // Inject controllers into dynamics model
-    this->setControllerThrust([this] (double dt) -> Eigen::VectorXd
-        { return this->thrust_propeller.control(dt); });
-    this->setControllerAero([this] (double dt) -> Eigen::VectorXd
-        { return this->elevons.control(dt); });
     this->setControllerVTOL([this] (double dt) -> Eigen::VectorXd
-        { return this->vtol_propellers.control(dt); });
+        { return this->virtual_esc.control(dt).segment(0,4); });
+    this->setControllerThrust([this] (double dt) -> Eigen::VectorXd
+        { return this->virtual_esc.control(dt).segment(4,2); });
+    this->setControllerAero([this] (double dt) -> Eigen::VectorXd
+        { return this->virtual_esc.control(dt).segment(6,2); });
 }

@@ -16,8 +16,7 @@
 #include "Interfaces/MAVLinkMessageRelay.h"
 #include "Interfaces/MAVLinkMessageHandler.h"
 #include "Interfaces/DroneStateEncoder.h"
-#include "Propellers.h"
-#include "Ailerons.h"
+#include "ESCs/FixedWingESC.h"
 #include "DroneSensors.h"
 #include "Interfaces/Clock.h"
 
@@ -31,7 +30,7 @@ private:
     bool should_reply_lockstep = false;
     uint32_t hil_actuator_controls_msg_n = 0;
     uint32_t sys_time_throttle_counter = 0;
-    
+
     uint8_t mav_mode = 0;
     boost::chrono::microseconds time{0};
     boost::chrono::microseconds last_autopilot_telemetry{0};
@@ -48,11 +47,9 @@ private:
         LatLonAlt{ INITIAL_LAT, INITIAL_LON, INITIAL_ALT }
         };
 
-    Propellers thrust_propellers{1};
-    Propellers vtol_propellers{4};
-    Ailerons ailerons{2};
 
     DroneConfig config;
+    FixedWingESC virtual_esc{config};
 
     MAVLinkMessageRelay& connection;
     boost::lockfree::queue<mavlink_message_t, boost::lockfree::capacity<50>> message_queue;
