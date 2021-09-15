@@ -46,3 +46,7 @@ void StandaloneDrone::_setup_drone() {
     this->setControllerAero([this] (double dt) -> Eigen::VectorXd
         { return this->virtual_esc.control(dt).segment(6,2); });
 }
+
+void StandaloneDrone::set_fake_ground_level(double level) {
+    this->ground_height = level;
+}

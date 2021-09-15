@@ -1,4 +1,4 @@
-#include "../src/IrisQuadController.h"
+#include "../src/Controllers/SimpleFixedWingController.h"
 
 int main() {
     DroneConfig config = config_from_file_path("../drone_models/fixed_wing");
@@ -10,7 +10,7 @@ int main() {
         boost::chrono::microseconds{1000000 * 2} // 2 s
     };
     ManoeuvrePlan plan{(boost::chrono::microseconds*)&section_lenghts, (Manoeuvre*)&manoeuvres, 4};
-    IrisQuadController quadController{config};
+    SimpleFixedWingController quadController{config};
     quadController.set_plan(plan);
 
     for (auto t = boost::chrono::microseconds{0}; t < boost::chrono::seconds{static_cast<long long>(7.004)}; t+=boost::chrono::microseconds{4000}) {

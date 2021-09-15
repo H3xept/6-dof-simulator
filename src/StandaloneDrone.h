@@ -2,8 +2,8 @@
 #define __STANDALONEDRONE_H__
 
 #include "Interfaces/DynamicObject.h"
-#include "ESCs/FixedWingESC.h"
-#include "Controllers/DroneController.h"
+#include "ESCs/SimpleFixedWingESC.h"
+#include "Interfaces/DroneController.h"
 #include "DroneSensors.h"
 #include "DataStructures/LatLonAlt.h"
 #include "Containers/DroneConfig.h"
@@ -14,7 +14,7 @@ protected:
     DroneStateProcessor* drone_state_processor;
 
     DroneConfig config;
-    FixedWingESC virtual_esc{config};
+    SimpleFixedWingESC virtual_esc{config};
     DroneController& controller;
 
 // Glasgow LatLon Height
@@ -42,6 +42,7 @@ public:
     }
 
     void update(boost::chrono::microseconds us) override;
+    void set_fake_ground_level(double level);
 };
 
 #endif // __STANDALONEDRONE_H__

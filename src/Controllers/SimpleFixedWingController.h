@@ -1,9 +1,9 @@
-#ifndef __IRISQUADCONTROLLER_H__
-#define __IRISQUADCONTROLLER_H__
+#ifndef __SIMPLE_FIXED_WING_CONTROLLER__
+#define __SIMPLE_FIXED_WING_CONTROLLER__
 
-#include "Controllers/DroneController.h"
-#include "Containers/DroneConfig.h"
-#include "Interfaces/TimeHandler.h"
+#include "../Interfaces/DroneController.h"
+#include "../Containers/DroneConfig.h"
+#include "../Interfaces/TimeHandler.h"
 #include <Eigen/Eigen>
 #include <boost/chrono.hpp>
 #include <stdio.h>
@@ -25,7 +25,7 @@ static char* manouvre_name(Manoeuvre m) {
         case Manoeuvre::HOLD:
             return "Hold";
         case Manoeuvre::ROLL:
-            return "Hold";
+            return "Roll";
         case Manoeuvre::PITCH:
             return "Pitch";
         case Manoeuvre::YAW:
@@ -35,7 +35,7 @@ static char* manouvre_name(Manoeuvre m) {
     }
 }
 
-class IrisQuadController : public DroneController {
+class SimpleFixedWingController : public DroneController {
 protected: 
     DroneConfig config;
 
@@ -70,7 +70,7 @@ protected:
     }
 
 public:
-    IrisQuadController(DroneConfig config) : config(config) {};
+    SimpleFixedWingController(DroneConfig config) : config(config) {};
 
     Manoeuvre get_current_manoeuvre() { return this->plan.manoeuvre[this->plan_cursor]; }
     boost::chrono::microseconds get_current_manoeuvre_duration() { return this->plan.section_length[this->plan_cursor]; }
@@ -85,17 +85,17 @@ public:
     auto controller_for_manoeuvre() -> Eigen::VectorXd(*)(DroneConfig, boost::chrono::microseconds) {
         switch(this->get_current_manoeuvre()) {
             case Manoeuvre::NONE:
-                return &IrisQuadController::none_controller;
+                return &SimpleFixedWingController::none_controller;
             case Manoeuvre::CLIMB:
-                return &IrisQuadController::climb_controller;
+                return &SimpleFixedWingController::climb_controller;
             case Manoeuvre::HOLD:
-                return &IrisQuadController::hold_controller;
+                return &SimpleFixedWingController::hold_controller;
             case Manoeuvre::ROLL:
-                return &IrisQuadController::roll_controller;
+                return &SimpleFixedWingController::roll_controller;
             case Manoeuvre::PITCH:
-                return &IrisQuadController::pitch_controller;
+                return &SimpleFixedWingController::pitch_controller;
             case Manoeuvre::YAW:
-                return &IrisQuadController::yaw_controller;
+                return &SimpleFixedWingController::yaw_controller;
             default:
                 fprintf(stdout, "Unknown manoeuvre! (%d)\n", this->get_current_manoeuvre());
                 std::exit(-1);
@@ -127,4 +127,4 @@ public:
     void update(boost::chrono::microseconds us) override;
 };
 
-#endif // __IRISQUADCONTROLLER_H__
+#endif // __SIMPLE_FIXED_WING_CONTROLLER__

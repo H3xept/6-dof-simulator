@@ -79,7 +79,7 @@ protected:
         Eigen::VectorXd& dx_state) {
         
         Eigen::Vector3d total_forces = this->get_forces();
-        Eigen::Vector3d total_momenta = this->get_moements();
+        Eigen::Vector3d total_momenta = this->get_moments();
 
         Eigen::Vector3d Vb = state.segment(3,3);
         Eigen::Vector3d wb = state.segment(9,3);
@@ -152,7 +152,7 @@ public:
         return fixed_wing_force + quadrotor_force + aero_force + weight_force;
     }
 
-    Eigen::Vector3d get_moements() {
+    Eigen::Vector3d get_moments() {
         Eigen::Vector3d fixed_wing_moment = this->compute_fixed_wing_dynamics ? this->fixed_wing_thrust_m.getM() : ZEROVEC(3);
         Eigen::Vector3d quadrotor_moment = this->compute_quadrotor_dynamics ? this->quadrotor_thrust_m.getM() : ZEROVEC(3);
         Eigen::Vector3d aero_moment = this->compute_aero_dynamics ? this->hor_flight_aero_force_m.getM() : ZEROVEC(3);

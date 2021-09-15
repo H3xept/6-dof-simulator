@@ -1,50 +1,24 @@
-#ifndef __FIXEDWINGESC_H__
-#define __FIXEDWINGESC_H__
+#ifndef __SIMPLE_FIXEDWINGESC_H__
+#define __SIMPLE_FIXEDWINGESC_H__
 
 #include "../Interfaces/AsyncDroneControl.h"
 #include "../Containers/DroneConfig.h"
 
-class FixedWingESC : public AsyncDroneControl {
+class SimpleFixedWingESC : public AsyncDroneControl {
 private:
     DroneConfig config;
     uint8_t pwm_control_size = 8;
     Eigen::VectorXd last_control{pwm_control_size};
 protected:
     Eigen::VectorXd control_for_vtol_propellers(Eigen::VectorXd vtol_pwm) {
-        // Using Erik's formula for omega here
-        // Motor parameters -- temporary! Move to somewhere more proper.
-        double Kt = 6.2e-05; // thrust [N] 
-        double Km = Kt / 42.0; // torque [Nm]
-        double Me = 1.0 / (490 * 3.14159265 / 30); // back EMF constant [V / [rad/s]]
-        double Mt = Me; // torque constant [Nm/Amp]
-
-        double Ly = 0.4; 
-        double Lx = 1.09;
-        double Lxf = 0.456;
-        double Lxr = Lx - Lxf;
-
-        double Scell = 7.0;
-        double Rs = 0.10;
-        double lm = 0.0007;
-        
-        double lxx = 1.0;
-        double lxy = 0.05;
-        double lxz = 0.05;
-        double lyx = 0.05;
-        double lyy = 1.5;
-        double lyz = 0.05;
-        double lzx = 0.05;
-        double lzy = 0.05;
-        double lzz = 2.0;
-
-        double Mcg = 14.5;
-        double battery_voltage = 4.0;
-
         Eigen::VectorXd ret{4};
-        double omega = sqrt(9.81/Kt/4.);
+        // (2.0*...) => With 0.5 pwm control we must get a hover
+        // This is to make sure that the SimpleFixedWingController is able to manoeuver without being a
+        // full blown PID controller (it has no feedback)
+        double omega = 2.0*sqrt(this->config.mass*9.81/this->config.b/4.);
 
         for (uint i = 0; i < 4; i++){
-            ret[i] = 2*((-Mt * Me / Rs) + sqrt(pow((Mt * Me / Rs), 2) - 4 * Km * -Mt / Rs * (abs(vtol_pwm[i]) * battery_voltage))) / (2 * Km);
+            ret[i] = vtol_pwm[i] * omega;
         }
         return ret;
     }
@@ -58,7 +32,7 @@ protected:
     }
 
 public:
-    FixedWingESC(DroneConfig config) : config(config) {};
+    SimpleFixedWingESC(DroneConfig config) : config(config) {};
 
     Eigen::VectorXd control(double dt) override {
         Eigen::VectorXd controls{this->pwm_control_size};
@@ -76,4 +50,4 @@ public:
     }
 };
 
-#endif // __FIXEDWINGESC_H__
+#endif // __SIMPLE_FIXEDWINGESC_H__
