@@ -55,17 +55,17 @@ protected:
 
     void transition_to_next_manouvre() {
 
-        if (++this->plan_cursor > this->plan.sections_n) {
-            fprintf(stdout, "[END] Manouvre plan complete.\n");
+        if (this->plan_cursor + 2 > this->plan.sections_n) {
+            fprintf(stdout, "[END] Manouvre plan complete (now: %lld us).\n", this->total_timer_us.count());
             this->manoeuvre_timer_us = boost::chrono::microseconds{0};
             this->total_timer_us = boost::chrono::microseconds{0};
             this->executing_manoeuvre = false;
             return;
-        }
+        } this->plan_cursor++;
 
         Manoeuvre next_manouvre = this->plan.manoeuvre[this->plan_cursor];
         boost::chrono::microseconds section_length = this->plan.section_length[this->plan_cursor];
-        fprintf(stdout, "[TRANSITION] Starting %s (%lld us)\n", manouvre_name(next_manouvre), section_length.count());
+        fprintf(stdout, "[TRANSITION] Starting %s (now: %lld us) (manoeuvre duration: %lld us)\n", manouvre_name(next_manouvre), this->total_timer_us.count(), section_length.count());
         this->manoeuvre_timer_us = boost::chrono::microseconds{0};
     }
 

@@ -18,7 +18,12 @@ Eigen::VectorXd SimpleFixedWingController::climb_controller(DroneConfig conf, bo
 }
 
 Eigen::VectorXd SimpleFixedWingController::roll_controller(DroneConfig conf, boost::chrono::microseconds t) {
-    return none_controller(conf, t);
+    Eigen::VectorXd control{8};
+    control[0] = 0.5;
+    control[1] = 0.6;
+    control[2] = 0.5;
+    control[3] = 0.5;
+    return control;
 }
 
 Eigen::VectorXd SimpleFixedWingController::pitch_controller(DroneConfig conf, boost::chrono::microseconds t) {
@@ -36,9 +41,11 @@ void SimpleFixedWingController::update(boost::chrono::microseconds us) {
     }
     uint8_t sections_n = this->plan.sections_n;
     boost::chrono::microseconds current_section_length = this->plan.section_length[this->plan_cursor];
-    if (this->manoeuvre_timer_us > current_section_length) {
-        this->transition_to_next_manouvre();
-    }
+
     this->manoeuvre_timer_us += us;
     this->total_timer_us += us;
+
+    if (this->manoeuvre_timer_us >= current_section_length) {
+        this->transition_to_next_manouvre();
+    }
 }
