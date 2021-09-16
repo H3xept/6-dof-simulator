@@ -5,15 +5,36 @@
 #include "../src/Logging/DroneStateLogger.h"
 #include <Eigen/Eigen>
 
+ManoeuvrePlan* yaw(const char* config) {
+
+    std::vector<Manoeuvre> manoeuvres{Manoeuvre::HOLD, Manoeuvre::YAW};
+    std::vector<boost::chrono::microseconds> section_lenghts{
+        boost::chrono::microseconds{4000}, // 4ms
+        boost::chrono::microseconds{4000 * 500}, // 12 ms (3 timesteps)
+    };
+    return new ManoeuvrePlan{section_lenghts, manoeuvres};
+}
+
+ManoeuvrePlan* pitch(const char* config) {
+
+    std::vector<Manoeuvre> manoeuvres{Manoeuvre::HOLD, Manoeuvre::PITCH};
+    std::vector<boost::chrono::microseconds> section_lenghts{
+        boost::chrono::microseconds{4000}, // 4ms
+        boost::chrono::microseconds{4000 * 500}, // 12 ms (3 timesteps)
+    };
+    return new ManoeuvrePlan{section_lenghts, manoeuvres};
+}
+
 ManoeuvrePlan* roll(const char* config) {
 
     std::vector<Manoeuvre> manoeuvres{Manoeuvre::HOLD, Manoeuvre::ROLL};
     std::vector<boost::chrono::microseconds> section_lenghts{
         boost::chrono::microseconds{4000}, // 4ms
-        boost::chrono::microseconds{4000 * 250}, // 12 ms (3 timesteps)
+        boost::chrono::microseconds{4000 * 500}, // 12 ms (3 timesteps)
     };
     return new ManoeuvrePlan{section_lenghts, manoeuvres};
 }
+
 
 int main()
 {
@@ -22,7 +43,7 @@ int main()
     DroneStateLogger dsLog;
     SimpleFixedWingController quadController{config_from_file_path(fixed_wing_config)};
     
-    ManoeuvrePlan* plan = roll(fixed_wing_config);
+    ManoeuvrePlan* plan = yaw(fixed_wing_config);
     quadController.set_plan(*plan);
     
     std::unique_ptr<Simulator> s(new Simulator({time_step_us, 1, true}));
