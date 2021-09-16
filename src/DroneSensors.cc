@@ -12,12 +12,7 @@
 DroneSensors::DroneSensors(DynamicObject& drone, LatLonAlt gps_origin) : 
     drone(drone),
     gps_origin(gps_origin)
-    {
-        std::cout << "GPS ORIGIN: " << std::endl;
-        std::cout << gps_origin.latitude_deg << std::endl;
-        std::cout << gps_origin.longitude_deg << std::endl;
-        std::cout << gps_origin.altitude_mm << std::endl;
-    }
+    {}
 
 #pragma mark DRONE_STATE_GETTERS
 

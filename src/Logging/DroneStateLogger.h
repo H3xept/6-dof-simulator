@@ -2,11 +2,19 @@
 #define __DRONESTATELOGGER_H__
 
 #include "../Interfaces/DroneStateProcessor.h"
+#include <Eigen/Eigen>
+#include "../Helpers/rotationMatrix.h"
 
 class DroneStateLogger : public DroneStateProcessor {
-    void new_drone_state(Eigen::VectorXd state, Eigen::VectorXd dx_state) override {
-        printf("State xyz: %f %f %f\n", state[0], state[1], state[2]);
-        printf("State rpy: %f %f %f\n", state[6], state[7], state[8]);
+
+    void simulation_complete() {
+        Eigen::VectorXd state = this->get_last_drone_state();
+        Eigen::VectorXd dx_state = this->get_last_drone_dx_state();
+        DroneStateProcessor::new_drone_state(state, dx_state);
+        Eigen::VectorXd gyro = state.segment(9, 3);
+        Eigen::VectorXd rpy = state.segment(6, 3);
+        printf("Final p q r: %f %f %f\n", gyro[0], gyro[1], gyro[2]);
+        printf("Final phi theta psi: %f %f %f\n", rpy[0], rpy[1], rpy[2]);
     }
 };
 

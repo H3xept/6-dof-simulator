@@ -23,7 +23,7 @@ void Simulator::add_environment_object(EnvironmentObject& e) {
 
 void Simulator::update(boost::chrono::microseconds us) {
     
-    if (this->simulation_clock.get_current_time_us() > this->stop_after_us && this->stop_after_us.count() != 0) {
+    if (this->simulation_clock.get_current_time_us() >= this->stop_after_us && this->stop_after_us.count() != 0) {
         printf("Simulation complete -- stopping after %lld us.\n", this->stop_after_us.count());
         this->should_shutdown = true;
         return;
@@ -50,6 +50,10 @@ void Simulator::start() {
         } else {
             printf("NON-LOCKSTEP NOT SUPPORTED\n");
         }
+    }
+
+    for (auto p : this->drone_state_processors) {
+        p->simulation_complete();
     }
 }
 

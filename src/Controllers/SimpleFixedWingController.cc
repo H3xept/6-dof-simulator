@@ -19,19 +19,29 @@ Eigen::VectorXd SimpleFixedWingController::climb_controller(DroneConfig conf, bo
 
 Eigen::VectorXd SimpleFixedWingController::roll_controller(DroneConfig conf, boost::chrono::microseconds t) {
     Eigen::VectorXd control{8};
-    control[0] = 0.5;
-    control[1] = 0.6;
+    control[0] = 0.49;
+    control[1] = 0.5;
+    control[2] = 0.5;
+    control[3] = 0.51;
+    return control;
+}
+
+Eigen::VectorXd SimpleFixedWingController::pitch_controller(DroneConfig conf, boost::chrono::microseconds t) {
+    Eigen::VectorXd control{8};
+    control[0] = 1;
+    control[1] = 0.5;
     control[2] = 0.5;
     control[3] = 0.5;
     return control;
 }
 
-Eigen::VectorXd SimpleFixedWingController::pitch_controller(DroneConfig conf, boost::chrono::microseconds t) {
-    return none_controller(conf, t);
-}
-
 Eigen::VectorXd SimpleFixedWingController::yaw_controller(DroneConfig conf, boost::chrono::microseconds t) {
-    return none_controller(conf, t);
+    Eigen::VectorXd control{8};
+    control[0] = 0.5;
+    control[1] = 1;
+    control[2] = 0.5;
+    control[3] = 1;
+    return control;
 }
 
 void SimpleFixedWingController::update(boost::chrono::microseconds us) {
@@ -39,7 +49,7 @@ void SimpleFixedWingController::update(boost::chrono::microseconds us) {
         printf("[WARNING] Called QuadController update without specifying a manoeuvre plan.\n");
         return;
     }
-    uint8_t sections_n = this->plan.sections_n;
+    uint8_t sections_n = this->plan.sections_n();
     boost::chrono::microseconds current_section_length = this->plan.section_length[this->plan_cursor];
 
     this->manoeuvre_timer_us += us;

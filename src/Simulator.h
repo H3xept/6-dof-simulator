@@ -24,7 +24,7 @@ struct SimulatorConfig {
         timestep_us(timestep_us),
         max_speed_multiplier(max_speed_multiplier),
         running_lockstep(running_lockstep) {
-            printf("Simulator has timestep of %ld (%lld)\n", timestep_us, this->timestep_us.count());
+            printf("Simulator has timestep of %lld us\n",this->timestep_us.count());
         };
 };
 

@@ -5,26 +5,29 @@
 #include "../src/Logging/DroneStateLogger.h"
 #include <Eigen/Eigen>
 
+ManoeuvrePlan* roll(const char* config) {
+
+    std::vector<Manoeuvre> manoeuvres{Manoeuvre::HOLD, Manoeuvre::ROLL};
+    std::vector<boost::chrono::microseconds> section_lenghts{
+        boost::chrono::microseconds{4000}, // 4ms
+        boost::chrono::microseconds{4000 * 250}, // 12 ms (3 timesteps)
+    };
+    return new ManoeuvrePlan{section_lenghts, manoeuvres};
+}
 
 int main()
 {
-    double time_step_s = 0.004;
-    double epoch_s = 10;
+    long time_step_us{4000};
     const char* fixed_wing_config = "../drone_models/fixed_wing";
-
-    Manoeuvre manoeuvres[2] = {Manoeuvre::HOLD, Manoeuvre::ROLL};
-    boost::chrono::microseconds section_lenghts[2] = {
-        boost::chrono::microseconds{4000}, // 4ms
-        boost::chrono::microseconds{4000 * 10}, // 12 ms (3 timesteps)
-    };
-    ManoeuvrePlan plan{(boost::chrono::microseconds*)&section_lenghts, (Manoeuvre*)&manoeuvres, 2};
-    SimpleFixedWingController quadController{config_from_file_path(fixed_wing_config)};
-    quadController.set_plan(plan);
-
     DroneStateLogger dsLog;
-
-    std::unique_ptr<Simulator> s(new Simulator({static_cast<long>(time_step_s * 1000000), 1, true}));
+    SimpleFixedWingController quadController{config_from_file_path(fixed_wing_config)};
+    
+    ManoeuvrePlan* plan = roll(fixed_wing_config);
+    quadController.set_plan(*plan);
+    
+    std::unique_ptr<Simulator> s(new Simulator({time_step_us, 1, true}));
     StandaloneDrone d{fixed_wing_config, s->simulation_clock, quadController};
+
     d.set_fake_ground_level(5);
     d.set_drone_state_processor(*s);
     s->add_environment_object(d);

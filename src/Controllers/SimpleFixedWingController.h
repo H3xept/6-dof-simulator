@@ -11,9 +11,11 @@
 enum Manoeuvre { NONE, CLIMB, HOLD, ROLL, PITCH, YAW };
 
 struct ManoeuvrePlan {
-    boost::chrono::microseconds* section_length;
-    Manoeuvre* manoeuvre;
-    size_t sections_n;
+    std::vector<boost::chrono::microseconds> section_length;
+    std::vector<Manoeuvre> manoeuvre;
+    size_t sections_n() {
+        return this->section_length.size();
+    };
 };
 
 static char* manouvre_name(Manoeuvre m) {
@@ -39,7 +41,7 @@ class SimpleFixedWingController : public DroneController {
 protected: 
     DroneConfig config;
 
-    ManoeuvrePlan plan{NULL, NULL, 0};
+    ManoeuvrePlan plan;
     bool executing_manoeuvre = false;
     uint8_t plan_cursor = 0;
 
@@ -55,7 +57,7 @@ protected:
 
     void transition_to_next_manouvre() {
 
-        if (this->plan_cursor + 2 > this->plan.sections_n) {
+        if (this->plan_cursor + 2 > this->plan.sections_n()) {
             fprintf(stdout, "[END] Manouvre plan complete (now: %lld us).\n", this->total_timer_us.count());
             this->manoeuvre_timer_us = boost::chrono::microseconds{0};
             this->total_timer_us = boost::chrono::microseconds{0};
@@ -77,7 +79,7 @@ public:
     
     boost::chrono::microseconds get_total_plan_duration_us() {
         boost::chrono::microseconds duration{0};
-        uint8_t manoeuvres_n = this->plan.sections_n;
+        uint8_t manoeuvres_n = this->plan.sections_n();
         for (auto i = 0; i < manoeuvres_n; i++) duration += this->plan.section_length[i];
         return duration;
     }
@@ -103,7 +105,7 @@ public:
     }
 
     void set_plan(ManoeuvrePlan plan) {
-        uint8_t manoeuvres_n = plan.sections_n;
+        uint8_t manoeuvres_n = plan.sections_n();
         this->manoeuvre_timer_us = boost::chrono::microseconds{0};
         this->total_timer_us = boost::chrono::microseconds{0};
         this->executing_manoeuvre = true;

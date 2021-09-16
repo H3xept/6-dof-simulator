@@ -93,13 +93,14 @@ protected:
         // earth-frame angle rates
         dx_state.segment(6,3) = caelus_fdm::angularVelocity2eulerRate(state)*wb;
         // body-frame angular acceleration
+        Eigen::Matrix3d inertia = Eigen::Matrix3d::Identity(3,3);
         dx_state.segment(9,3)  = total_momenta; // external torques
         dx_state.segment(9,3) -= wb.cross( this->moment_of_inertia*wb.eval() ); // account for frame dependent ang acc
         dx_state.segment(9,3)  = this->moment_of_inertia.colPivHouseholderQr().solve(dx_state.segment(9,3).eval()); // inertia matrix into account
 
-        // Remove numerical noise < 1e-7
-        for (auto i = 0; i < dx_state.size(); i++)
-            dx_state[i] = fabs(dx_state[i]) < 1e-7 ? 0 : dx_state[i];
+        // // Remove numerical noise < 1e-7
+        // for (auto i = 0; i < dx_state.size(); i++)
+        //     dx_state[i] = fabs(dx_state[i]) < 1e-7 ? 0 : dx_state[i];
     }
 
     void integration_step(boost::chrono::microseconds us) {
