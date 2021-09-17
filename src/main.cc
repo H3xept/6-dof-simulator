@@ -22,6 +22,7 @@ int main()
     std::unique_ptr<Simulator> s(new Simulator({4000, 1, true}));
     
     Drone d{fixed_wing_config, handler, s->simulation_clock };
+    d.set_fake_ground_level(0);
     s->add_environment_object(d);
     s->start();
     

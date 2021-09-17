@@ -54,7 +54,7 @@ namespace caelus_fdm {
             m_F.resize(3);
             m_F[0] = 0.;
             m_F[1] = 0.;
-            m_F[2] = 0; -m_b*(pow(m_Omega[0],2.)+pow(m_Omega[1],2.)+pow(m_Omega[2],2.)+pow(m_Omega[3],2.));
+            m_F[2] = -m_b*(pow(m_Omega[0],2.)+pow(m_Omega[1],2.)+pow(m_Omega[2],2.)+pow(m_Omega[3],2.));
             return 0;
         }
         int computeM(const double &t, const State &x) override
@@ -63,7 +63,7 @@ namespace caelus_fdm {
             m_M.resize(3);
             m_M[0] = m_b * m_l * (pow(m_Omega[3], 2) - pow(m_Omega[1], 2));
             m_M[1] = m_b * m_l * (pow(m_Omega[2], 2) - pow(m_Omega[0], 2));
-            m_M[2] = m_d*(-pow(m_Omega[0],2.)+pow(m_Omega[1],2.)-pow(m_Omega[2],2.)+pow(m_Omega[3],2.));
+            m_M[2] = m_d*(+pow(m_Omega[0],2.)-pow(m_Omega[1],2.)+pow(m_Omega[2],2.)-pow(m_Omega[3],2.));
             return 0;
         }
 

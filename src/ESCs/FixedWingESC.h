@@ -43,9 +43,22 @@ protected:
         Eigen::VectorXd ret{4};
         double omega = sqrt(9.81/Kt/4.);
 
-        for (uint i = 0; i < 4; i++){
-            ret[i] = 2*((-Mt * Me / Rs) + sqrt(pow((Mt * Me / Rs), 2) - 4 * Km * -Mt / Rs * (abs(vtol_pwm[i]) * battery_voltage))) / (2 * Km);
-        }
+        // Iris quad
+        // ret[0] = 2 * omega * vtol_pwm[0];
+        // ret[1] = 2 * omega * vtol_pwm[3];
+        // ret[2] = 2 * omega * vtol_pwm[1];
+        // ret[3] = 2 * omega * vtol_pwm[2];
+        
+        // + quad
+        ret[0] = 1.5 * omega * vtol_pwm[2];
+        ret[1] = 1.5 * omega * vtol_pwm[0];
+        ret[2] = 1.5 * omega * vtol_pwm[3];
+        ret[3] = 1.5 * omega * vtol_pwm[1];
+        
+
+        // for (uint i = 0; i < 4; i++){
+        //     ret[i] = 1.2 * omega * vtol_pwm[i]; //2*((-Mt * Me / Rs) + sqrt(pow((Mt * Me / Rs), 2) - 4 * Km * -Mt / Rs * (abs(vtol_pwm[i]) * battery_voltage))) / (2 * Km);
+        // }
         return ret;
     }
 

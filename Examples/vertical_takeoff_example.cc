@@ -14,7 +14,7 @@ int main()
 
     std::vector<Manoeuvre> manoeuvres{Manoeuvre::HOLD, Manoeuvre::CLIMB};
     std::vector<boost::chrono::microseconds> section_lenghts{
-        boost::chrono::microseconds{1000000 * 3}, // 3 s
+        boost::chrono::microseconds{1000000 * 2}, // 3 s
         boost::chrono::microseconds{1000000 * 2}, // 2 s
     };
     ManoeuvrePlan plan{section_lenghts, manoeuvres};

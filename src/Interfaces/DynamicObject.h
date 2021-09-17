@@ -49,7 +49,7 @@ protected:
     bool compute_quadrotor_dynamics = true;
     bool compute_fixed_wing_dynamics = false;
     bool compute_aero_dynamics = false;
-    bool compute_weight_dynamics = false;
+    bool compute_weight_dynamics = true;
 
     Eigen::Matrix3d moment_of_inertia;
      
@@ -93,7 +93,9 @@ protected:
         // earth-frame angle rates
         dx_state.segment(6,3) = caelus_fdm::angularVelocity2eulerRate(state)*wb;
         // body-frame angular acceleration
+        
         Eigen::Matrix3d inertia = Eigen::Matrix3d::Identity(3,3);
+        
         dx_state.segment(9,3)  = total_momenta; // external torques
         dx_state.segment(9,3) -= wb.cross( inertia*wb.eval() ); // account for frame dependent ang acc
         dx_state.segment(9,3)  = inertia.colPivHouseholderQr().solve(dx_state.segment(9,3).eval()); // inertia matrix into account
@@ -183,6 +185,10 @@ public:
 
     void setControllerAero(std::function<Eigen::VectorXd(double)> controller) {
         this->hor_flight_aero_force_m.setController(controller);
+    }
+
+    void set_fake_ground_level(double level) {
+        this->ground_height = level;
     }
 };
 

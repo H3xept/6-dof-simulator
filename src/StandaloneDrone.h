@@ -42,7 +42,6 @@ public:
     }
 
     void update(boost::chrono::microseconds us) override;
-    void set_fake_ground_level(double level);
 };
 
 #endif // __STANDALONEDRONE_H__

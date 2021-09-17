@@ -164,6 +164,9 @@ public:
     virtual uint64_t get_sim_time() = 0;
     virtual Sensors& get_sensors() = 0;
     
+    virtual Eigen::VectorXd get_state() { }
+    virtual Eigen::VectorXd get_dx_state() { };
+
     mavlink_message_t hil_state_quaternion_msg(uint8_t system_id, uint8_t component_id) {
         Sensors& sensors = this->get_sensors();
 
@@ -171,10 +174,10 @@ public:
         float attitude_float[4] = {0};
         for (int i = 0; i < attitude.size(); i++) attitude_float[i] = attitude[i];
 
-        Eigen::Vector3d rpy_speed = sensors.get_body_frame_gyro();
+        Eigen::Vector3d rpy_speed = caelus_fdm::body2earth(this->get_state()) * sensors.get_body_frame_gyro();
         LatLonAlt lat_lon_alt = sensors.get_lat_lon_alt();
         Eigen::Vector3d ground_speed = sensors.get_absolute_ground_speed() * 100; // m to cm
-        Eigen::Vector3d body_frame_acc = sensors.get_body_frame_acceleration();
+        Eigen::Vector3d body_frame_acc = caelus_fdm::body2earth(this->get_state()) * sensors.get_body_frame_acceleration();
         uint16_t true_wind_speed = sensors.get_true_wind_speed();
 
         // (acc / G * 1000) => m/s**2 to mG (milli Gs)
@@ -194,7 +197,7 @@ public:
             lat_lon_alt.altitude_mm,
             ground_speed[0],
             ground_speed[1],
-            ground_speed[2],
+            -ground_speed[2],
             true_wind_speed,
             true_wind_speed,
             body_frame_acc[0],
@@ -208,9 +211,9 @@ public:
         
         LatLonAlt lat_lon_alt = sensors.get_lat_lon_alt();
         // m/s**2
-        Eigen::Vector3d body_frame_acc = sensors.get_body_frame_acceleration();
+        Eigen::Vector3d body_frame_acc = caelus_fdm::body2earth(this->get_state()) * sensors.get_body_frame_acceleration();
         // rad/s
-        Eigen::Vector3d gyro_xyz = sensors.get_body_frame_gyro();
+        Eigen::Vector3d gyro_xyz = caelus_fdm::body2earth(this->get_state()) *  sensors.get_body_frame_gyro();
         // gauss
         Eigen::Vector3d magfield = sensors.get_magnetic_field();
         double abs_pressure = sensors.get_pressure() / 100; // Pa to hPa
@@ -232,7 +235,7 @@ public:
             abs_pressure + randomNoise(this->noise_Prs) / 100,
             diff_pressure + randomNoise(this->noise_Prs) / 100,
             // ENU to NED
-            -lat_lon_alt.altitude_mm / 1000 + randomNoise(this->noise_Prs) , 
+            lat_lon_alt.altitude_mm / 1000 + randomNoise(this->noise_Prs) / 1000 , 
             temperature + randomNoise(this->noise_Prs)
         );
     }

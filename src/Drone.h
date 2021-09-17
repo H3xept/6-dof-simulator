@@ -85,6 +85,13 @@ public:
     uint64_t get_sim_time() override;
     uint8_t get_mav_mode() override;
     Sensors& get_sensors() override;
+    
+    Eigen::VectorXd get_state() {
+        return this->state;
+    }
+    Eigen::VectorXd get_dx_state() {
+        return this->dx_state;
+    };
 };
 
 #endif // __DRONE_H__
