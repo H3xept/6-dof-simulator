@@ -94,13 +94,14 @@ GPSData DroneSensors::get_gps_data() {
 
 uint16_t DroneSensors::get_yaw_wrt_earth_north() {
     Eigen::Vector3d attitude = this->get_earth_frame_attitude();
-    return (static_cast<int>(RAD_TO_DEG*attitude[2]) + 1) % 361;
+    double offset = fmod(attitude[2], 360) < 0 ? 360.0 : 0.0;
+    return (static_cast<uint16_t>(RAD_TO_DEG*fmod(attitude[2], 360) + offset) + 1) % 361;
 }
 
 uint16_t DroneSensors::get_course_over_ground() {
     Eigen::VectorXd xyz_dot = this->get_earth_frame_velocity();
     // Maybe convert xyz to earth frame?
-    return (DEG_TO_RAD * atan2(xyz_dot[0], xyz_dot[1])) * 100; // Deg => cDeg
+    return (RAD_TO_DEG * (atan2(xyz_dot[1], xyz_dot[0]) + M_PI)) * 100; // Deg => cDeg
 }
 
 Eigen::Vector3d DroneSensors::get_environment_wind() {

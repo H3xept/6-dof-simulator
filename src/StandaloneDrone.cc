@@ -14,7 +14,7 @@ void StandaloneDrone::update(boost::chrono::microseconds us) {
 void StandaloneDrone::mix_controls(boost::chrono::microseconds us) {
     Eigen::VectorXd current_pwm = this->controller.control(0);
     // printf("Control is %f %f %f %f\n", current_pwm[0], current_pwm[1], current_pwm[2], current_pwm[3]);
-    this->virtual_esc.set_control(current_pwm);
+    this->virtual_esc.set_pwm(current_pwm);
 }
 
 void StandaloneDrone::fake_ground_transform(boost::chrono::microseconds us) {

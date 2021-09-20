@@ -43,7 +43,7 @@ int main()
     DroneStateLogger dsLog;
     SimpleFixedWingController quadController{config_from_file_path(fixed_wing_config)};
     
-    ManoeuvrePlan* plan = yaw(fixed_wing_config);
+    ManoeuvrePlan* plan = pitch(fixed_wing_config);
     quadController.set_plan(*plan);
     
     std::unique_ptr<Simulator> s(new Simulator({time_step_us, 1, true}));

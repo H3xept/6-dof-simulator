@@ -146,7 +146,7 @@ void Drone::_process_hil_actuator_controls(mavlink_message_t m) {
     Eigen::VectorXd vec_controls{8};
     for (int i = 0; i < 8; i++) vec_controls[i] = controls.controls[i];
 
-    this->virtual_esc.set_control(vec_controls);
+    this->virtual_esc.set_pwm(vec_controls);
 }
 
 void Drone::_process_mavlink_message(mavlink_message_t m) {

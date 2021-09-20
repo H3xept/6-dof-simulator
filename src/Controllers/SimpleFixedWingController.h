@@ -125,7 +125,7 @@ public:
         return this->get_current_pwm_control();
     }
 
-    virtual void set_control(Eigen::VectorXd c) override {};
+    virtual void set_pwm(Eigen::VectorXd c) override {};
     void update(boost::chrono::microseconds us) override;
 };
 

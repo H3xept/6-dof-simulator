@@ -12,7 +12,7 @@ int main()
 
     std::cout << "6 DOF Simulator" << std::endl;
 
-    const char* fixed_wing_config = "../drone_models/fixed_wing";
+    const char* fixed_wing_config = "../drone_models/small";
     ConsoleLogger* cl = ConsoleLogger::shared_instance();
     cl->set_debug(false);
 

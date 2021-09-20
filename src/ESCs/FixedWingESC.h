@@ -8,7 +8,8 @@ class FixedWingESC : public AsyncDroneControl {
 private:
     DroneConfig config;
     uint8_t pwm_control_size = 8;
-    Eigen::VectorXd last_control{pwm_control_size};
+    Eigen::VectorXd last_pwm{pwm_control_size};
+    Eigen::VectorXd smoothed_pwm{4};
 protected:
     Eigen::VectorXd control_for_vtol_propellers(Eigen::VectorXd vtol_pwm) {
         // Using Erik's formula for omega here
@@ -41,19 +42,21 @@ protected:
         double battery_voltage = 4.0;
 
         Eigen::VectorXd ret{4};
-        double omega = sqrt(9.81/Kt/4.);
+        for (auto i = 0; i < 4; i++)
+            smoothed_pwm[i] += (vtol_pwm[i] - smoothed_pwm[i]) * (1.0 - exp(-0.004 / 1.0));
 
+        double omega = sqrt((this->config.mass*9.81)/this->config.b/4.);
         // Iris quad
-        // ret[0] = 2 * omega * vtol_pwm[0];
-        // ret[1] = 2 * omega * vtol_pwm[3];
-        // ret[2] = 2 * omega * vtol_pwm[1];
-        // ret[3] = 2 * omega * vtol_pwm[2];
+        ret[0] = 2 * omega * smoothed_pwm[0];
+        ret[1] = 2 * omega * smoothed_pwm[3];
+        ret[2] = 2 * omega * smoothed_pwm[1];
+        ret[3] = 2 * omega * smoothed_pwm[2];
         
         // + quad
-        ret[0] = 1.5 * omega * vtol_pwm[2];
-        ret[1] = 1.5 * omega * vtol_pwm[0];
-        ret[2] = 1.5 * omega * vtol_pwm[3];
-        ret[3] = 1.5 * omega * vtol_pwm[1];
+        // ret[0] = 1.5 * omega * vtol_pwm[2];
+        // ret[1] = 1.5 * omega * vtol_pwm[0];
+        // ret[2] = 1.5 * omega * vtol_pwm[3];
+        // ret[3] = 1.5 * omega * vtol_pwm[1];
         
 
         // for (uint i = 0; i < 4; i++){
@@ -75,17 +78,17 @@ public:
 
     Eigen::VectorXd control(double dt) override {
         Eigen::VectorXd controls{this->pwm_control_size};
-        Eigen::VectorXd vtol_control = this->control_for_vtol_propellers(this->last_control.segment(0, 4));
-        Eigen::VectorXd thrust_control = this->control_for_thrust_propeller(this->last_control.segment(4, 2));
-        Eigen::VectorXd elevons_control = this->control_for_elevons(this->last_control.segment(6, 2));
+        Eigen::VectorXd vtol_control = this->control_for_vtol_propellers(this->last_pwm.segment(0, 4));
+        Eigen::VectorXd thrust_control = this->control_for_thrust_propeller(this->last_pwm.segment(4, 2));
+        Eigen::VectorXd elevons_control = this->control_for_elevons(this->last_pwm.segment(6, 2));
         controls.segment(0, 4) = vtol_control;
         controls.segment(4, 2) = thrust_control;
         controls.segment(6, 2) = elevons_control;
         return controls;
     }
 
-    void set_control(Eigen::VectorXd c) override {
-        this->last_control = c;
+    void set_pwm(Eigen::VectorXd c) override {
+        this->last_pwm = c;
     }
 };
 

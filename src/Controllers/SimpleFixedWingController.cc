@@ -19,27 +19,27 @@ Eigen::VectorXd SimpleFixedWingController::climb_controller(DroneConfig conf, bo
 
 Eigen::VectorXd SimpleFixedWingController::roll_controller(DroneConfig conf, boost::chrono::microseconds t) {
     Eigen::VectorXd control{8};
-    control[0] = 0.5;
-    control[1] = 0.4;
-    control[2] = 0.5;
-    control[3] = 0.6;
+    control[0] = 0.4;
+    control[1] = 0.6;
+    control[2] = 0.6;
+    control[3] = 0.4;
     return control;
 }
 
 Eigen::VectorXd SimpleFixedWingController::pitch_controller(DroneConfig conf, boost::chrono::microseconds t) {
     Eigen::VectorXd control{8};
-    control[0] = 0.4;
-    control[1] = 0.5;
+    control[0] = 0.6;
+    control[1] = 0.4;
     control[2] = 0.6;
-    control[3] = 0.5;
+    control[3] = 0.4;
     return control;
 }
 
 Eigen::VectorXd SimpleFixedWingController::yaw_controller(DroneConfig conf, boost::chrono::microseconds t) {
     Eigen::VectorXd control{8};
     control[0] = 0.8;
-    control[1] = 0.2;
-    control[2] = 0.8;
+    control[1] = 0.8;
+    control[2] = 0.2;
     control[3] = 0.2;
     return control;
 }

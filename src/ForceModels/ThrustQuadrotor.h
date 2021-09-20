@@ -61,8 +61,9 @@ namespace caelus_fdm {
         {
             // set moment (need to check if the orientations are right)
             m_M.resize(3);
-            m_M[0] = m_b * m_l * (pow(m_Omega[3], 2) - pow(m_Omega[1], 2));
-            m_M[1] = m_b * m_l * (pow(m_Omega[2], 2) - pow(m_Omega[0], 2));
+            double m_l_rotated = 0.707106 * m_l;
+            m_M[0] = m_b * m_l_rotated * (pow(m_Omega[3], 2) + pow(m_Omega[2], 2) - pow(m_Omega[0], 2) - pow(m_Omega[1], 2));
+            m_M[1] = m_b * m_l_rotated * (pow(m_Omega[3], 2) + pow(m_Omega[0], 2) - pow(m_Omega[2], 2) - pow(m_Omega[1], 2));
             m_M[2] = m_d*(+pow(m_Omega[0],2.)-pow(m_Omega[1],2.)+pow(m_Omega[2],2.)-pow(m_Omega[3],2.));
             return 0;
         }

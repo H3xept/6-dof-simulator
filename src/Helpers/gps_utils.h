@@ -9,9 +9,9 @@
 
 void ned_to_ecef(double lat0, double lon0, double h0, Eigen::VectorXd& state, double& x, double& y, double& z) {
 
-    double xEast = state[0];
-    double yNorth = state[1];
-    double zUp = state[2];
+    double xEast = state[1];
+    double yNorth = state[0];
+    double zUp = -state[2];
 
     // Convert to radians in notation consistent with the paper:
     double lambda = lat0 * DEG_TO_RAD;

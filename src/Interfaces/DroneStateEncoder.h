@@ -17,16 +17,16 @@
 
 // #define HIL_STATE_QUATERNION_VERBOSE
 // #define HIL_SENSOR_VERBOSE
-// #define HIL_GPS_VERBOSE
+#define HIL_GPS_VERBOSE
 #define SENSOR_RANDOM_NOISE
 
 class DroneStateEncoder {
 private:
     // Standard deviations for sensor noise
-    float noise_Acc = 0.005f;
-    float noise_Gyo = 0.001f;
-    float noise_Mag = 0.0005f;
-    float noise_Prs = 0.0001f;
+    float noise_Acc = 0.05f;
+    float noise_Gyo = 0.01f;
+    float noise_Mag = 0.005f;
+    float noise_Prs = 0.01f;
 
     std::default_random_engine noise_generator;
     double randomNoise(float stdDev) {
@@ -174,16 +174,21 @@ public:
         float attitude_float[4] = {0};
         for (int i = 0; i < attitude.size(); i++) attitude_float[i] = attitude[i];
 
-        Eigen::Vector3d rpy_speed = caelus_fdm::body2earth(this->get_state()) * sensors.get_body_frame_gyro();
+        Eigen::Vector3d rpy_speed = sensors.get_body_frame_gyro();
         LatLonAlt lat_lon_alt = sensors.get_lat_lon_alt();
         Eigen::Vector3d ground_speed = sensors.get_absolute_ground_speed() * 100; // m to cm
-        Eigen::Vector3d body_frame_acc = caelus_fdm::body2earth(this->get_state()) * sensors.get_body_frame_acceleration();
+        Eigen::Vector3d body_frame_acc = sensors.get_body_frame_acceleration();
         uint16_t true_wind_speed = sensors.get_true_wind_speed();
 
+
+        // TODO REMOVE -- ITS A TEST
+        float gforce = 9.81;
+        // -----
+
         // (acc / G * 1000) => m/s**2 to mG (milli Gs)
-        body_frame_acc[0] = (int16_t)std::round((body_frame_acc[0] / fabs(G_FORCE)) * 1000);
-        body_frame_acc[1] = (int16_t)std::round((body_frame_acc[1] / fabs(G_FORCE)) * 1000);
-        body_frame_acc[2] = (int16_t)std::round((body_frame_acc[2] / fabs(G_FORCE)) * 1000);
+        body_frame_acc[0] = (int16_t)std::round((body_frame_acc[0] / fabs(gforce)) * 1000);
+        body_frame_acc[1] = (int16_t)std::round((body_frame_acc[1] / fabs(gforce)) * 1000);
+        body_frame_acc[2] = (int16_t)std::round((body_frame_acc[2] / fabs(gforce)) * 1000);
 
         return this->_hil_state_quaternion_msg(
             system_id,
@@ -197,7 +202,7 @@ public:
             lat_lon_alt.altitude_mm,
             ground_speed[0],
             ground_speed[1],
-            -ground_speed[2],
+            ground_speed[2],
             true_wind_speed,
             true_wind_speed,
             body_frame_acc[0],
@@ -211,9 +216,9 @@ public:
         
         LatLonAlt lat_lon_alt = sensors.get_lat_lon_alt();
         // m/s**2
-        Eigen::Vector3d body_frame_acc = caelus_fdm::body2earth(this->get_state()) * sensors.get_body_frame_acceleration();
+        Eigen::Vector3d body_frame_acc = sensors.get_body_frame_acceleration();
         // rad/s
-        Eigen::Vector3d gyro_xyz = caelus_fdm::body2earth(this->get_state()) *  sensors.get_body_frame_gyro();
+        Eigen::Vector3d gyro_xyz = sensors.get_body_frame_gyro();
         // gauss
         Eigen::Vector3d magfield = sensors.get_magnetic_field();
         double abs_pressure = sensors.get_pressure() / 100; // Pa to hPa
@@ -250,11 +255,11 @@ public:
 
 #ifdef HIL_GPS_VERBOSE
         printf("[GPS SENSOR]\n");
-        printf("Lon Lat Alt (degE7, degE7, mm): %d %d %d \n", lat_lon_alt.latitude_deg, lat_lon_alt.longitude_deg, lat_lon_alt.altitude_mm);
+        printf("Lon Lat Alt (degE7, degE7, mm): %f %f %f \n", lat_lon_alt.latitude_deg, lat_lon_alt.longitude_deg, lat_lon_alt.altitude_mm);
         printf("EPH EPV (dimensionless): %d %d \n", gps_data.eph, gps_data.epv);
-        printf("Ground speed (m/s): %d %d %d \n", gs.north_speed, gs.east_speed, gs.down_speed);
+        printf("Ground speed (cm/s): %d %d %d \n", gs.north_speed, gs.east_speed, gs.down_speed);
         printf("GPS ground speed (m/s): %d\n", gps_data.gps_ground_speed);
-        printf("Course over ground: %d \n",  gps_data.course_over_ground);
+        printf("Course over ground: %d (x.%f y.%f) \n",  gps_data.course_over_ground, sensors.get_earth_frame_velocity()[0], sensors.get_earth_frame_velocity()[1]);
         printf("Sats visible: %d \n",  gps_data.satellites_visible);
         printf("Vehicle yaw (deg): %d \n",  gps_data.vehicle_yaw);
         printf("Sim time %llu\n", this->get_sim_time());
@@ -278,7 +283,7 @@ public:
             gps_data.course_over_ground,
             gps_data.satellites_visible,
             0, // ID
-            gps_data.satellites_visible
+            gps_data.vehicle_yaw
         );
 
         return msg;

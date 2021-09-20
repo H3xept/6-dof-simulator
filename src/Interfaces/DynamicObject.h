@@ -97,8 +97,8 @@ protected:
         Eigen::Matrix3d inertia = Eigen::Matrix3d::Identity(3,3);
         
         dx_state.segment(9,3)  = total_momenta; // external torques
-        dx_state.segment(9,3) -= wb.cross( inertia*wb.eval() ); // account for frame dependent ang acc
-        dx_state.segment(9,3)  = inertia.colPivHouseholderQr().solve(dx_state.segment(9,3).eval()); // inertia matrix into account
+        dx_state.segment(9,3) -= wb.cross( this->moment_of_inertia*wb.eval() ); // account for frame dependent ang acc
+        dx_state.segment(9,3)  = this->moment_of_inertia.colPivHouseholderQr().solve(dx_state.segment(9,3).eval()); // inertia matrix into account
 
         // // Remove numerical noise < 1e-7
         // for (auto i = 0; i < dx_state.size(); i++)

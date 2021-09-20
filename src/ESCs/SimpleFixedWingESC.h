@@ -17,9 +17,11 @@ protected:
         // full blown PID controller (it has no feedback)
         double omega = 2.0*sqrt(this->config.mass*9.81/this->config.b/4.);
 
-        for (uint i = 0; i < 4; i++){
-            ret[i] = vtol_pwm[i] * omega;
-        }
+        ret[0] = omega * vtol_pwm[0];
+        ret[1] = omega * vtol_pwm[3];
+        ret[2] = omega * vtol_pwm[1];
+        ret[3] = omega * vtol_pwm[2];
+
         return ret;
     }
 
@@ -45,7 +47,7 @@ public:
         return controls;
     }
 
-    void set_control(Eigen::VectorXd c) override {
+    void set_pwm(Eigen::VectorXd c) override {
         this->last_control = c;
     }
 };
