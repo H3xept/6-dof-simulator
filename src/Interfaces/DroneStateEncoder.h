@@ -17,7 +17,7 @@
 
 // #define HIL_STATE_QUATERNION_VERBOSE
 // #define HIL_SENSOR_VERBOSE
-#define HIL_GPS_VERBOSE
+// #define HIL_GPS_VERBOSE
 #define SENSOR_RANDOM_NOISE
 
 class DroneStateEncoder {

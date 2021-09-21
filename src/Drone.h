@@ -19,6 +19,7 @@
 #include "ESCs/FixedWingESC.h"
 #include "DroneSensors.h"
 #include "Interfaces/Clock.h"
+#include "Interfaces/DroneStateProcessor.h"
 
 class Drone : public DynamicObject,
               public MAVLinkSystem,
@@ -30,6 +31,7 @@ private:
     bool should_reply_lockstep = false;
     uint32_t hil_actuator_controls_msg_n = 0;
     uint32_t sys_time_throttle_counter = 0;
+    DroneStateProcessor* drone_state_processor;
 
     uint8_t mav_mode = 0;
     boost::chrono::microseconds time{0};
@@ -81,6 +83,10 @@ public:
     // Receives mavlink message from non-main thread
     // Should store messages in queue and process them within the update loop.
     void handle_mavlink_message(mavlink_message_t m) override;
+
+    void set_drone_state_processor(DroneStateProcessor& processor) {
+        this->drone_state_processor = &processor;
+    }
 
     uint64_t get_sim_time() override;
     uint8_t get_mav_mode() override;

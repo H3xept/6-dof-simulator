@@ -15,8 +15,9 @@ int main()
     const char* fixed_wing_config = "../drone_models/small";
     ConsoleLogger* cl = ConsoleLogger::shared_instance();
     cl->set_debug(false);
-
+    
     boost::asio::io_service service;
+
     MAVLinkConnectionHandler handler{service, ConnectionTarget::PX4};
     boost::thread link_thread = boost::thread(boost::bind(&boost::asio::io_service::run, &service));
     std::unique_ptr<Simulator> s(new Simulator({4000, 1, true}));
