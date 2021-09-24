@@ -84,7 +84,7 @@ namespace caelus_fdm {
             m_M.resize(3);
             // this https://core.ac.uk/download/pdf/48657308.pdf
             m_M[0] = (sqrt(2) / 2) * this->vtol_lcog * ((r3_f+r2_f) - (r0_f+r1_f));
-            m_M[1] = 0; //(sqrt(2) / 2) * this->vtol_lcog * ((r3_f+r0_f) - (r1_f+r2_f));
+            m_M[1] = (sqrt(2) / 2) * this->vtol_lcog * ((r3_f+r0_f) - (r1_f+r2_f));
             m_M[2] = this->vtol_tdrag * (m_Omega[0]-m_Omega[1]+m_Omega[2]-m_Omega[3]);
             return 0;
         }

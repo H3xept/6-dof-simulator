@@ -43,7 +43,7 @@ protected:
 
         Eigen::VectorXd ret{4};
 
-        double omega_coeff = (this->config.vtol_kv / (1 + this->config.vtol_tau));
+        double omega_coeff = (this->config.vtol_kv / (1 + this->config.vtol_tau * 0.004));
 
         // Iris quad
         ret[0] = omega_coeff * vtol_pwm[0];
