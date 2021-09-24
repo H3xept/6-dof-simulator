@@ -8,7 +8,7 @@ class FixedWingESC : public AsyncDroneControl {
 private:
     DroneConfig config;
     uint8_t pwm_control_size = 8;
-    Eigen::VectorXd last_pwm{pwm_control_size};
+    Eigen::VectorXd last_pwm = Eigen::VectorXd::Zero(pwm_control_size);
     Eigen::VectorXd smoothed_pwm{4};
 protected:
     Eigen::VectorXd control_for_vtol_propellers(Eigen::VectorXd vtol_pwm) {
@@ -42,15 +42,14 @@ protected:
         double battery_voltage = 4.0;
 
         Eigen::VectorXd ret{4};
-        for (auto i = 0; i < 4; i++)
-            smoothed_pwm[i] += (vtol_pwm[i] - smoothed_pwm[i]) * (1.0 - exp(-0.004 / 1.0));
 
-        double omega = sqrt((this->config.mass*9.81)/this->config.b/4.);
+        double omega_coeff = (this->config.vtol_kv / (1 + this->config.vtol_tau));
+
         // Iris quad
-        ret[0] = 2 * omega * smoothed_pwm[0];
-        ret[1] = 2 * omega * smoothed_pwm[3];
-        ret[2] = 2 * omega * smoothed_pwm[1];
-        ret[3] = 2 * omega * smoothed_pwm[2];
+        ret[0] = omega_coeff * vtol_pwm[0];
+        ret[1] = omega_coeff * vtol_pwm[3];
+        ret[2] = omega_coeff * vtol_pwm[1];
+        ret[3] = omega_coeff * vtol_pwm[2];
         
         // + quad
         // ret[0] = 1.5 * omega * vtol_pwm[2];

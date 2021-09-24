@@ -6,14 +6,24 @@
 
 inline Eigen::VectorXd euler_angles_to_quaternions(const Eigen::Vector3d euler_rpy) {
         Eigen::VectorXd quaternion{4};
+
         float roll = euler_rpy[0];
         float pitch = euler_rpy[1];
         float yaw = euler_rpy[2];
+        
+        double cy = cos(yaw * 0.5);
+        double sy = sin(yaw * 0.5);
+        double cp = cos(pitch * 0.5);
+        double sp = sin(pitch * 0.5);
+        double cr = cos(roll * 0.5);
+        double sr = sin(roll * 0.5);
+        
         // Order should be w x y z 
-        quaternion[1] = sin(roll/2) * cos(pitch/2) * cos(yaw/2) - cos(roll/2) * sin(pitch/2) * sin(yaw/2);
-        quaternion[2] = cos(roll/2) * sin(pitch/2) * cos(yaw/2) + sin(roll/2) * cos(pitch/2) * sin(yaw/2);
-        quaternion[3] = cos(roll/2) * cos(pitch/2) * sin(yaw/2) - sin(roll/2) * sin(pitch/2) * cos(yaw/2);
-        quaternion[0] = cos(roll/2) * cos(pitch/2) * cos(yaw/2) + sin(roll/2) * sin(pitch/2) * sin(yaw/2);
+        quaternion[0] = cr * cp * cy + sr * sp * sy;
+        quaternion[1] = sr * cp * cy - cr * sp * sy;
+        quaternion[2] = cr * sp * cy + sr * cp * sy;
+        quaternion[3] = cr * cp * sy - sr * sp * cy;
+        
         return quaternion;
 }
     

@@ -13,6 +13,7 @@
 #include <iostream>
 #include <sstream>
 #include <cstdlib>
+#include "../Helpers/json.hh"
 
 class GodotRouter : public DroneStateProcessor {
 private:    
@@ -22,13 +23,12 @@ public:
     GodotRouter(boost::asio::io_service& service) : sender(service) {}
 
     std::stringstream state_to_json(Eigen::VectorXd xyz, Eigen::VectorXd rpy) {
+        nlohmann::json data;
         boost::property_tree::ptree pt;
-        std::string xyz_string = "[" + std::to_string(xyz[0]) + "," + std::to_string(xyz[1]) + "," + std::to_string(xyz[2]) + "]";
-        std::string rpy_string = "[" + std::to_string(rpy[0]) + "," + std::to_string(rpy[1]) + "," + std::to_string(rpy[2]) + "," + std::to_string(rpy[3]) + "]";
-        pt.put("position", xyz_string);
-        pt.put("attitude", rpy_string);
+        data["position"] = {xyz[0], -xyz[2], xyz[1]};
+        data["attitude"] = {rpy[1], -rpy[3], rpy[2], rpy[0]};
         std::stringstream ss;
-        boost::property_tree::json_parser::write_json(ss, pt);
+        ss << data.dump();
         return ss;
     }
 
@@ -37,11 +37,7 @@ public:
         Eigen::VectorXd gyro = state.segment(9, 3);
         Eigen::VectorXd xyz = state.segment(0, 3);
         Eigen::VectorXd rpy = euler_angles_to_quaternions(state.segment(6, 3));
-        // remote_endpoint = boost::asio::ip::udp::endpoint(boost::asio::ip::address::from_string("127.0.0.1"), 1234);
-        // boost::system::error_code err;
-        // socket.send_to(this->state_to_json(xyz, rpy).str().c_str(), remote_endpoint, 0, err);
         sender.send_data(state_to_json(xyz, rpy).str());
-        printf("Sending\n");
     }
 };
 

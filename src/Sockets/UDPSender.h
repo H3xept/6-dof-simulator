@@ -18,12 +18,10 @@ public:
     }   
 
     void send_data(std::string data) {
-        if (throttle++ % 100 == 0) {
+        if (throttle++ % 10 != 0) return;
         const boost::asio::ip::udp::endpoint ep(ip::address::from_string("127.0.0.1"), 12345);
         boost::system::error_code err;
         socket.send_to(buffer(data.c_str(), data.size()), ep, 0, err);
-        }
-
     }
 };
 

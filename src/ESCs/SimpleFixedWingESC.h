@@ -15,7 +15,7 @@ protected:
         // (2.0*...) => With 0.5 pwm control we must get a hover
         // This is to make sure that the SimpleFixedWingController is able to manoeuver without being a
         // full blown PID controller (it has no feedback)
-        double omega = 2.0*sqrt(this->config.mass*9.81/this->config.b/4.);
+        double omega = 2.0*sqrt(this->config.mass*9.81/this->config.vtol_komega/4.);
 
         ret[0] = omega * vtol_pwm[0];
         ret[1] = omega * vtol_pwm[3];

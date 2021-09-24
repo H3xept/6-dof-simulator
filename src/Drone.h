@@ -31,7 +31,7 @@ private:
     bool should_reply_lockstep = false;
     uint32_t hil_actuator_controls_msg_n = 0;
     uint32_t sys_time_throttle_counter = 0;
-    DroneStateProcessor* drone_state_processor;
+    DroneStateProcessor* drone_state_processor = NULL;
 
     uint8_t mav_mode = 0;
     boost::chrono::microseconds time{0};

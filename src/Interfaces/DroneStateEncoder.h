@@ -174,7 +174,7 @@ public:
         float attitude_float[4] = {0};
         for (int i = 0; i < attitude.size(); i++) attitude_float[i] = attitude[i];
 
-        Eigen::Vector3d rpy_speed = sensors.get_body_frame_gyro();
+        Eigen::Vector3d angle_rates = sensors.get_earth_frame_angle_rates();
         LatLonAlt lat_lon_alt = sensors.get_lat_lon_alt();
         Eigen::Vector3d ground_speed = sensors.get_absolute_ground_speed() * 100; // m to cm
         Eigen::Vector3d body_frame_acc = sensors.get_body_frame_acceleration();
@@ -194,9 +194,9 @@ public:
             system_id,
             component_id,
             attitude_float,
-            rpy_speed[0],
-            rpy_speed[1],
-            rpy_speed[2],
+            angle_rates[0],
+            angle_rates[1],
+            angle_rates[2],
             lat_lon_alt.latitude_deg * 1e7,
             lat_lon_alt.longitude_deg * 1e7,
             lat_lon_alt.altitude_mm,

@@ -7,8 +7,8 @@
 ----------------------- Author: Cristian Greco -----------------------
 */
 
-#ifndef CAELUS_FDM_WEIGHT_H
-#define CAELUS_FDM_WEIGHT_H
+#ifndef CAELUS_FDM_DRAG_H
+#define CAELUS_FDM_DRAG_H
 
 #include "../Helpers/rotationMatrix.h"
 #include "BaseFM.h"
@@ -16,25 +16,25 @@
 
 namespace caelus_fdm {
 
-    class Weight : public BaseFM {
+    class Drag : public BaseFM {
 
     protected:
 
         // Attributes
-        double mass;  // quadrotor mass
-        double m_g;     // grav force per unit of mass
+        double rho = 1.225;  // air density
+        double drag_coefficient = 0.157;     // drag coeff
 
     public:
 
-        explicit Weight(DroneConfig config ,double g = 9.81) :
-            BaseFM(), mass(config.mass), m_g(g)
+        explicit Drag(DroneConfig config) :
+            BaseFM(), rho(1.225), drag_coefficient(0.157)
         {
-            printf("Weight model initialised with params:\n");
-            printf("\t mass: %f\n", mass);
-            printf("\t gravity acc: %f\n", m_g);
+            printf("Drag model initialised with params:\n");
+            printf("\t rho: %f\n", rho);
+            printf("\t drag_coefficient: %f\n", drag_coefficient);
         }
 
-        virtual ~Weight() = default;
+        virtual ~Drag() = default;
 
         /**
          * Evaluate force/moment
@@ -49,10 +49,9 @@ namespace caelus_fdm {
          */
         int computeF(const double &t, const State &x) override {
             m_F.resize(3);
-            m_F[0] = 0.;
-            m_F[1] = 0.;
-            m_F[2] = m_g*mass; // TODO GAETANO CHANGE IF NECESSARY //
-            m_F    = earth2body(x)*m_F;
+            Eigen::Vector3d Vb = x.segment(3,3);
+            double k = -1/2 * rho * drag_coefficient;
+            m_F = k * Vb.norm() * Vb;
             return 0;
         }
         int computeM(const double &t, const State &x) override {
@@ -61,10 +60,6 @@ namespace caelus_fdm {
             m_M[1] = 0.;
             m_M[2] = 0.;
             return 0;
-        }
-
-        double get_mass() const {
-            return mass;
         }
 
         int updateParamsImpl(const double &t, const State &x) override {
@@ -77,4 +72,4 @@ namespace caelus_fdm {
 }
 
 
-#endif //CAELUS_FDM_WEIGHT_H
+#endif //CAELUS_FDM_DRAG_H

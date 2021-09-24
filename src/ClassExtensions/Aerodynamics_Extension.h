@@ -8,7 +8,7 @@ class Aerodynamics : public caelus_fdm::Aerodynamics {
 public:
     Aerodynamics(DroneConfig conf) : caelus_fdm::Aerodynamics(
         conf.c,
-        conf.b,
+        conf.thruster_klift,
         conf.S,
         conf.drone_aero_config,
         NULL

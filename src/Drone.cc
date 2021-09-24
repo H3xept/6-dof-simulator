@@ -50,9 +50,11 @@ void Drone::update(boost::chrono::microseconds us) {
     this->fake_ground_transform(us);
     this->_process_mavlink_messages();
     this->_publish_state(us);
+
     if (this->drone_state_processor != NULL) {
         this->drone_state_processor->new_drone_state(this->state, this->dx_state);
     }
+    
 }
 
 MAVLinkMessageRelay& Drone::get_mavlink_message_relay() {

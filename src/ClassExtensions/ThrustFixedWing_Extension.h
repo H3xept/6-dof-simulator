@@ -7,7 +7,7 @@
 class ThrustFixedWing : public caelus_fdm::ThrustFixedWing {
 public:
     ThrustFixedWing(DroneConfig conf) : caelus_fdm::ThrustFixedWing(
-        conf.b_prop,
+        conf.thruster_klift,
         NULL
     ) {};
 }; 

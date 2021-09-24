@@ -2,6 +2,7 @@
 #include "Logging/ConsoleLogger.h"
 #include "Simulator.h"
 #include "Drone.h"
+#include "Logging/GodotRouter.h"
 #include "StandaloneDrone.h"
 #include <boost/thread.hpp>
 #include "Sockets/MAVLinkConnectionHandler.h"
@@ -17,6 +18,8 @@ int main()
     cl->set_debug(false);
     
     boost::asio::io_service service;
+    boost::asio::io_service godot_service;
+    GodotRouter r{godot_service};
 
     MAVLinkConnectionHandler handler{service, ConnectionTarget::PX4};
     boost::thread link_thread = boost::thread(boost::bind(&boost::asio::io_service::run, &service));
@@ -24,7 +27,10 @@ int main()
     
     Drone d{fixed_wing_config, handler, s->simulation_clock };
     d.set_fake_ground_level(0);
+    d.set_drone_state_processor(*s);
     s->add_environment_object(d);
+    s->add_drone_state_processor(&r);
+
     s->start();
     
     return 0;

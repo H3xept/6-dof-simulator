@@ -18,7 +18,7 @@ struct ManoeuvrePlan {
     };
 };
 
-static char* manouvre_name(Manoeuvre m) {
+static const char* manouvre_name(Manoeuvre m) {
     switch(m) {
         case Manoeuvre::NONE:
             return "Shut down";

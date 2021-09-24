@@ -6,8 +6,9 @@
 #include <fstream>
 #include <Eigen/Eigen>
 #include "../Interfaces/PrettyPrintable.h"
-#include "../ClassExtensions/MatrixXd_Extension.h"
+#include "../ClassExtensions/Matrix3d_Extension.h"
 #include "../ClassExtensions/APM_Extension.h"
+#include "../Helpers/json.hh"
 
 /**
  * 
@@ -25,25 +26,42 @@
  * 
  */
 struct DroneConfig : public PrettyPrintable {
-    double mass; // kg
-    double b; // thrust factor (QuadrotorEOM)
-    double l; // Distance rotor from com [m]
-    double b_prop; // thrust coefficient
-    double d; // drag factor
-    double c; // ? 
-    double S; // ?
-    double b_aero; // ?
+    double mass = 0; // kg
+
+    double vtol_komega = 0;
+    double vtol_kv = 0;
+    double vtol_klift = 0;
+    double vtol_tau = 0;
+    double vtol_lcog = 0;
+    double vtol_tdrag = 0;
+
+    double thruster_komega = 0;
+    double thruster_kv = 0;
+    double thruster_klift = 0;
+    double thruster_tau = 0;
+    double thruster_lcog = 0;
+    double thruster_tdrag = 0;
+
+    double c = 0; // ? 
+    double S = 0; // ?
+    double b_aero = 0; // ?
     APM drone_aero_config;
-    MatrixXd J; // Inertial matrix
-    
-    friend std::istream &operator>>(std::istream &i, DroneConfig& dc) {
-        i >> dc.mass >> dc.b >> dc.l >> dc.b_prop >> dc.d >> dc.c >> dc.S >> dc.b_aero;
-        // Aero Data
-        i >> dc.drone_aero_config;
-        // Inertial Matrix
-        dc.J.resize(3,3);
-        i >> dc.J;
-        return i;
+    Matrix3d J; // Inertial matrix
+
+    DroneConfig(nlohmann::json data) : J(data) {
+        mass = data["mass"];
+        vtol_komega = data["vtol_komega"];
+        vtol_kv = data["vtol_kv"];
+        vtol_klift = data["vtol_klift"];
+        vtol_tau = data["vtol_tau"];
+        vtol_lcog = data["vtol_lcog"];
+        vtol_tdrag = data["vtol_tdrag"];
+        thruster_komega = data["thruster_komega"];
+        thruster_kv = data["thruster_kv"];
+        thruster_klift = data["thruster_klift"];
+        thruster_tau = data["thruster_tau"];
+        thruster_lcog = data["thruster_lcog"];
+        thruster_tdrag = data["thruster_tdrag"];
     }
 
     std::string str() override {
@@ -56,9 +74,9 @@ struct DroneConfig : public PrettyPrintable {
 };
 
 static DroneConfig config_from_file_path(const char* path) {
-    DroneConfig conf;
     std::ifstream fin(path);
-    fin >> conf;
+    nlohmann::json data = nlohmann::json::parse(fin);
+    DroneConfig conf{data};
     return conf;
 }
 

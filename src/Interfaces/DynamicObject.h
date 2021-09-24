@@ -8,8 +8,9 @@
 
 #include "EnvironmentObject.h"
 #include "../ClassExtensions/Aerodynamics_Extension.h"
-#include "../ClassExtensions/Weight_Extension.h"
-#include "../ClassExtensions/ThrustQuadrotor_Extension.h"
+#include "../ForceModels/ThrustQuadrotor.h"
+#include "../ForceModels/Drag.h"
+#include "../ForceModels/Weight.h"
 #include "../ClassExtensions/ThrustFixedWing_Extension.h"
 #include "../Helpers/constants.h"
 #include "../Helpers/angleRateRotationMatrix.h"
@@ -38,9 +39,10 @@ protected:
 
     double ground_height = 0;
     
-    Weight weight_force_m;
+    caelus_fdm::Weight weight_force_m;
     ThrustFixedWing fixed_wing_thrust_m;
-    ThrustQuadrotor quadrotor_thrust_m;
+    caelus_fdm::ThrustQuadrotor quadrotor_thrust_m;
+    caelus_fdm::Drag drag_m;
     Aerodynamics hor_flight_aero_force_m;
     Clock& clock;
 
@@ -50,6 +52,7 @@ protected:
     bool compute_fixed_wing_dynamics = false;
     bool compute_aero_dynamics = false;
     bool compute_weight_dynamics = true;
+    bool compute_drag_dynamics = false;
 
     Eigen::Matrix3d moment_of_inertia;
      
@@ -94,15 +97,13 @@ protected:
         dx_state.segment(6,3) = caelus_fdm::angularVelocity2eulerRate(state)*wb;
         // body-frame angular acceleration
         
-        Eigen::Matrix3d inertia = Eigen::Matrix3d::Identity(3,3);
-        
         dx_state.segment(9,3)  = total_momenta; // external torques
         dx_state.segment(9,3) -= wb.cross( this->moment_of_inertia*wb.eval() ); // account for frame dependent ang acc
         dx_state.segment(9,3)  = this->moment_of_inertia.colPivHouseholderQr().solve(dx_state.segment(9,3).eval()); // inertia matrix into account
 
-        // // Remove numerical noise < 1e-7
-        // for (auto i = 0; i < dx_state.size(); i++)
-        //     dx_state[i] = fabs(dx_state[i]) < 1e-7 ? 0 : dx_state[i];
+        // Remove numerical noise < 1e-12
+        for (auto i = 0; i < dx_state.size(); i++)
+            dx_state[i] = fabs(dx_state[i]) < 1e-12 ? 0 : dx_state[i];
     }
 
     void integration_step(boost::chrono::microseconds us) {
@@ -131,11 +132,13 @@ protected:
 public:
 
     DynamicObject(DroneConfig config, Clock& clock) : 
-        weight_force_m(Weight{config, G_FORCE}),
+        weight_force_m(caelus_fdm::Weight{config, G_FORCE}),
         fixed_wing_thrust_m(ThrustFixedWing{config}),
-        quadrotor_thrust_m(ThrustQuadrotor{config}),
+        quadrotor_thrust_m(caelus_fdm::ThrustQuadrotor{config}),
         hor_flight_aero_force_m(Aerodynamics{config}),
-        clock(clock) {
+        drag_m(caelus_fdm::Drag{config}),
+        clock(clock)
+        {
             this->initialise_state();
             this->initialise_dx_state();
             this->moment_of_inertia = config.J;
@@ -151,7 +154,8 @@ public:
         Eigen::Vector3d quadrotor_force = this->compute_quadrotor_dynamics ? this->quadrotor_thrust_m.getF() : ZEROVEC(3);
         Eigen::Vector3d aero_force = this->compute_aero_dynamics ? this->hor_flight_aero_force_m.getF() : ZEROVEC(3);
         Eigen::Vector3d weight_force = this->compute_weight_dynamics ? this->weight_force_m.getF() : ZEROVEC(3);
-        return fixed_wing_force + quadrotor_force + aero_force + weight_force;
+        Eigen::Vector3d drag_force = this->compute_drag_dynamics ? this->drag_m.getF() : ZEROVEC(3);
+        return fixed_wing_force + quadrotor_force + aero_force + weight_force + drag_force;
     }
 
     Eigen::Vector3d get_moements() {
@@ -159,7 +163,9 @@ public:
         Eigen::Vector3d quadrotor_moment = this->compute_quadrotor_dynamics ? this->quadrotor_thrust_m.getM() : ZEROVEC(3);
         Eigen::Vector3d aero_moment = this->compute_aero_dynamics ? this->hor_flight_aero_force_m.getM() : ZEROVEC(3);
         Eigen::Vector3d weight_moment = this->compute_weight_dynamics ? this->weight_force_m.getM() : ZEROVEC(3);
-        return fixed_wing_moment + quadrotor_moment + aero_moment + weight_moment;
+        Eigen::Vector3d drag_moment = this->compute_drag_dynamics ? this->drag_m.getM() : ZEROVEC(3);
+
+        return fixed_wing_moment + quadrotor_moment + aero_moment + weight_moment + drag_moment;
     }
 
     void update(boost::chrono::microseconds us) override {
