@@ -101,7 +101,9 @@ uint16_t DroneSensors::get_yaw_wrt_earth_north() {
 uint16_t DroneSensors::get_course_over_ground() {
     Eigen::VectorXd xyz_dot = this->get_earth_frame_velocity();
     // Maybe convert xyz to earth frame?
-    return (RAD_TO_DEG * (atan2(xyz_dot[1], xyz_dot[0]) + M_PI)) * 100; // Deg => cDeg
+    double angle = atan2(xyz_dot[1], xyz_dot[0]);
+    angle = angle < 0 ? angle + 2*M_PI : angle;
+    return (RAD_TO_DEG * (angle)) * 100; // Deg => cDeg
 }
 
 Eigen::Vector3d DroneSensors::get_environment_wind() {

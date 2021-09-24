@@ -177,7 +177,7 @@ public:
         Eigen::Vector3d angle_rates = sensors.get_earth_frame_angle_rates();
         LatLonAlt lat_lon_alt = sensors.get_lat_lon_alt();
         Eigen::Vector3d ground_speed = sensors.get_absolute_ground_speed() * 100; // m to cm
-        Eigen::Vector3d body_frame_acc = sensors.get_body_frame_acceleration();
+        Eigen::Vector3d body_frame_acc = caelus_fdm::body2earth(this->get_state()) * sensors.get_body_frame_acceleration();
         uint16_t true_wind_speed = sensors.get_true_wind_speed();
 
 

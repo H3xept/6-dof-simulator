@@ -9,7 +9,7 @@ private:
     DroneConfig config;
     uint8_t pwm_control_size = 8;
     Eigen::VectorXd last_pwm = Eigen::VectorXd::Zero(pwm_control_size);
-    Eigen::VectorXd smoothed_pwm{4};
+    Eigen::VectorXd smoothed_pwm = Eigen::VectorXd::Zero(4);
 protected:
     Eigen::VectorXd control_for_vtol_propellers(Eigen::VectorXd vtol_pwm) {
         // Using Erik's formula for omega here
@@ -50,7 +50,6 @@ protected:
         ret[1] = omega_coeff * vtol_pwm[3];
         ret[2] = omega_coeff * vtol_pwm[1];
         ret[3] = omega_coeff * vtol_pwm[2];
-        
         // + quad
         // ret[0] = 1.5 * omega * vtol_pwm[2];
         // ret[1] = 1.5 * omega * vtol_pwm[0];
