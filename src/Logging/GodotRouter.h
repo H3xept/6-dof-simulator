@@ -22,11 +22,25 @@ public:
 
     GodotRouter(boost::asio::io_service& service) : sender(service) {}
 
-    std::stringstream state_to_json(Eigen::VectorXd xyz, Eigen::VectorXd rpy) {
+    std::stringstream state_to_json(Eigen::VectorXd state, Eigen::VectorXd dx_state) {
         nlohmann::json data;
         boost::property_tree::ptree pt;
-        data["position"] = {xyz[0], -xyz[2], xyz[1]};
-        data["attitude"] = {rpy[1], -rpy[3], rpy[2], rpy[0]};
+        Eigen::VectorXd xyz = state.segment(0, 3);
+        Eigen::VectorXd rpy_quat = euler_angles_to_quaternions(state.segment(6, 3));
+        
+        data["earth_rpy_quat"] = {rpy_quat[1], -rpy_quat[3], rpy_quat[2], rpy_quat[0]};
+        data["earth_position_godot"] = {xyz[0], -xyz[2], xyz[1]};
+
+        data["earth_position"] = {xyz[0], xyz[1], xyz[2]};
+        data["body_velocity"] = {state[3], state[4], state[5]};
+        data["earth_rpy"] = {state[6], state[7], state[8]};
+        data["body_angular_vel"] = {state[9], state[10], state[11]};
+
+        data["earth_velocity"] = {dx_state[0], dx_state[1], dx_state[2]};
+        data["body_acceleration"] = {dx_state[3], dx_state[4], dx_state[5]};
+        data["earth_rpy_dot"] = {dx_state[6], dx_state[7], dx_state[8]};
+        data["body_angular_acc"] = {dx_state[9], dx_state[10], dx_state[11]};
+
         std::stringstream ss;
         ss << data.dump();
         return ss;
@@ -34,10 +48,7 @@ public:
 
     void new_drone_state(Eigen::VectorXd state, Eigen::VectorXd dx_state) {
         DroneStateProcessor::new_drone_state(state, dx_state);
-        Eigen::VectorXd gyro = state.segment(9, 3);
-        Eigen::VectorXd xyz = state.segment(0, 3);
-        Eigen::VectorXd rpy = euler_angles_to_quaternions(state.segment(6, 3));
-        sender.send_data(state_to_json(xyz, rpy).str());
+        sender.send_data(state_to_json(state, dx_state).str());
     }
 };
 

@@ -47,7 +47,9 @@ void Simulator::start() {
             boost::chrono::microseconds time_increment = this->get_config().timestep_us;
             this->update(time_increment);
         } else {
-            printf("NON-LOCKSTEP NOT SUPPORTED\n");
+            boost::chrono::microseconds time_increment = this->get_config().timestep_us;
+            this->update(time_increment);
+            boost::this_thread::sleep_for(boost::chrono::milliseconds(4));
         }
     }
 

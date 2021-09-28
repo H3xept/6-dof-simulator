@@ -39,6 +39,8 @@ protected:
 
     double ground_height = 0;
     
+    DroneConfig config;
+
     caelus_fdm::Weight weight_force_m;
     ThrustFixedWing fixed_wing_thrust_m;
     caelus_fdm::ThrustQuadrotor quadrotor_thrust_m;
@@ -132,6 +134,7 @@ protected:
 public:
 
     DynamicObject(DroneConfig config, Clock& clock) : 
+        config(config),
         weight_force_m(caelus_fdm::Weight{config, G_FORCE}),
         fixed_wing_thrust_m(ThrustFixedWing{config}),
         quadrotor_thrust_m(caelus_fdm::ThrustQuadrotor{config}),
