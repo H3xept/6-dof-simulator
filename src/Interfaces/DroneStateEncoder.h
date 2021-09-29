@@ -203,8 +203,8 @@ public:
             ground_speed[0],
             ground_speed[1],
             ground_speed[2],
-            true_wind_speed,
-            true_wind_speed,
+            true_wind_speed * 100, // m to cm
+            true_wind_speed * 100, // m to cm
             body_frame_acc[0],
             body_frame_acc[1],
             -body_frame_acc[2]

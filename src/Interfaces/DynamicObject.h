@@ -54,7 +54,7 @@ protected:
     bool compute_fixed_wing_dynamics = false;
     bool compute_aero_dynamics = false;
     bool compute_weight_dynamics = true;
-    bool compute_drag_dynamics = false;
+    bool compute_drag_dynamics = true;
 
     Eigen::Matrix3d moment_of_inertia;
      
@@ -118,7 +118,7 @@ protected:
             },
             this->state,
             this->dx_state,
-            this->clock.get_current_time_us().count() / 1000000, // Simulation time here in milliseconds?
+            this->clock.get_current_time_us().count() / 1000000.0, // Simulation time here in seconds?
             dt
         );
     }
