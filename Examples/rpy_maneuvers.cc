@@ -43,7 +43,6 @@ int main()
     const char* drone_config = "../drone_models/small";
     
     boost::asio::io_service godot_service;
-    GodotRouter r{godot_service};
 
     SimpleFixedWingController quadController{config_from_file_path(drone_config)};
     
@@ -51,6 +50,7 @@ int main()
     quadController.set_plan(*plan);
     
     std::unique_ptr<Simulator> s(new Simulator({time_step_us, 1, false}));
+    GodotRouter r{godot_service, s->simulation_clock};
     StandaloneDrone d{drone_config, s->simulation_clock, quadController};
 
     d.set_fake_ground_level(5);

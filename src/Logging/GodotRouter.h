@@ -14,13 +14,15 @@
 #include <sstream>
 #include <cstdlib>
 #include "../Helpers/json.hh"
+#include "../Interfaces/Clock.h"
 
 class GodotRouter : public DroneStateProcessor {
 private:    
     UDPSender sender;
+    Clock clock;
 public:
 
-    GodotRouter(boost::asio::io_service& service) : sender(service) {}
+    GodotRouter(boost::asio::io_service& service, Clock& clock) : sender(service), clock(clock) {}
 
     std::stringstream state_to_json(Eigen::VectorXd state, Eigen::VectorXd dx_state) {
         nlohmann::json data;
@@ -30,6 +32,7 @@ public:
         
         data["earth_rpy_quat"] = {rpy_quat[1], -rpy_quat[3], rpy_quat[2], rpy_quat[0]};
         data["earth_position_godot"] = {xyz[0], -xyz[2], xyz[1]};
+        data["time_elapsed"] = this->clock.get_current_time_us().count();
 
         data["earth_position"] = {xyz[0], xyz[1], xyz[2]};
         data["body_velocity"] = {state[3], state[4], state[5]};

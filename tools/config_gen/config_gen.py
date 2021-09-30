@@ -84,6 +84,6 @@ def event_loop(config, window):
 def new_config(name = 'Untitled'):
     return Config(name, {key:0 for key in Config.AVAILABLE_PARAMS.keys()})
 
-config = Config.FromFile('../../drone_models/small')
+config = Config.FromFile('../../drone_models/jmav')
 window = make_window(config)
 event_loop(config, window)
