@@ -51,7 +51,7 @@ void Simulator::start() {
             this->update(time_increment);
             after = boost::chrono::high_resolution_clock::now();
             boost::chrono::microseconds computation_time = boost::chrono::duration_cast<boost::chrono::microseconds>(time_increment - (after-before));
-            boost::this_thread::sleep_for((time_increment - computation_time).count() > 0 ? time_increment - computation_time : boost::chrono::microseconds{0});
+            // boost::this_thread::sleep_for((time_increment - computation_time).count() > 0 ? time_increment - computation_time : boost::chrono::microseconds{0});
         } else {
             this->update(time_increment);
             boost::this_thread::sleep_for(boost::chrono::milliseconds(4));

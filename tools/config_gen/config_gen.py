@@ -56,12 +56,23 @@ def make_labels(config):
 
 def make_text_boxes(config):
     return [sg.InputText(v, key=k, enable_events=True) for k,v in config.get_items()]
-            
+
+def calc_hover_pwm(config):
+    return (config.json_data['mass'] * 9.81 / 4) / (config.json_data['vtol_kv']**2 * config.json_data['vtol_komega'])
+
+def make_px4_params(config):
+    return [
+        sg.Text(f'MPC_THR_HOVER'),
+        sg.InputText(calc_hover_pwm(config), key='MPC_THR_HOVER')
+    ]
+    
 def make_layout(config):
     labels = make_labels(config)
     text_boxes = make_text_boxes(config)
+    px4_params = make_px4_params(config)
     save_btn = sg.Button("Save config", key=SAVE_BUTTON_EVENT, enable_events=True)
-    return list(zip(labels, text_boxes)) + [[save_btn]]
+    
+    return list(zip(labels, text_boxes)) + [[px4_params]] + [[save_btn]]
 
 def process_changes(values, config):
     config.json_data = values
@@ -84,6 +95,6 @@ def event_loop(config, window):
 def new_config(name = 'Untitled'):
     return Config(name, {key:0 for key in Config.AVAILABLE_PARAMS.keys()})
 
-config = Config.FromFile('../../drone_models/jmav')
+config = Config.FromFile('../../drone_models/small')
 window = make_window(config)
 event_loop(config, window)

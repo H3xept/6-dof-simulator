@@ -13,7 +13,7 @@ int main()
 
     std::cout << "6 DOF Simulator" << std::endl;
 
-    const char* fixed_wing_config = "../drone_models/jmav";
+    const char* fixed_wing_config = "../drone_models/small";
     ConsoleLogger* cl = ConsoleLogger::shared_instance();
     cl->set_debug(false);
     
@@ -22,7 +22,7 @@ int main()
 
     MAVLinkConnectionHandler handler{service, ConnectionTarget::PX4};
     boost::thread link_thread = boost::thread(boost::bind(&boost::asio::io_service::run, &service));
-    std::unique_ptr<Simulator> s(new Simulator({4000, 1, true}));
+    std::unique_ptr<Simulator> s(new Simulator({4000, 2, true}));
     GodotRouter r{godot_service, s->simulation_clock};
     
     Drone d{fixed_wing_config, handler, s->simulation_clock };

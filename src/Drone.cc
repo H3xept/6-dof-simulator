@@ -26,12 +26,12 @@ void Drone::_setup_drone() {
 }
 
 void Drone::fake_ground_transform(boost::chrono::microseconds us) {
-    double dt = (us.count() / 1000.0) / 1000.0;
+    double dt = (us.count() / 1000000.0);
     Eigen::Vector3d position = this->get_sensors().get_earth_frame_position(); // NED
     Eigen::Vector3d velocity = this->get_sensors().get_earth_frame_velocity(); // NED
     Eigen::Vector3d acceleration = caelus_fdm::body2earth(this->state) * this->get_sensors().get_body_frame_acceleration();
 
-    if (position[2] >= this->ground_height && velocity[2] + acceleration[2] * dt >= 0.0) {
+    if (position[2] >= this->ground_height && velocity[2] + acceleration[2] * dt > 9.81 * dt) {
         this->state[2] = 0;
         // Body frame velocity
         this->state.segment(3, 3) = Eigen::VectorXd::Zero(3);
