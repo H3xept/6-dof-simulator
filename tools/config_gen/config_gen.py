@@ -62,8 +62,8 @@ def calc_hover_pwm(config):
 
 def make_px4_params(config):
     return [
-        sg.Text(f'MPC_THR_HOVER'),
-        sg.InputText(calc_hover_pwm(config), key='MPC_THR_HOVER')
+        # sg.Text(f'MPC_THR_HOVER'),
+        # sg.InputText(calc_hover_pwm(config), key='MPC_THR_HOVER')
     ]
     
 def make_layout(config):
