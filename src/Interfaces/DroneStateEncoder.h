@@ -20,7 +20,7 @@
 // #define HIL_STATE_QUATERNION_VERBOSE
 // #define HIL_SENSOR_VERBOSE
 // #define HIL_GPS_VERBOSE
-#define ASSERT_NOT_NAN
+// #define ASSERT_NOT_NAN
 
 class DroneStateEncoder {
 private:
